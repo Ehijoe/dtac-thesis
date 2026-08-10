@@ -1,0 +1,209 @@
+\documentclass[12pt,a4paper]{report}
+
+% --- Essential Packages ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[english]{babel}
+\usepackage{amsmath, amssymb}
+\usepackage{graphicx}
+\usepackage{setspace}
+\usepackage{tocbibind} % Automatically adds lot, lof, bibliography to ToC
+\usepackage{apacite}   % APA style for references
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=black, % Keeping links black for print quality
+    filecolor=black,      
+    urlcolor=black,
+    citecolor=black,
+}
+
+% --- Page Layout (Section 1.3) ---
+\usepackage{geometry}
+\geometry{
+    a4paper,
+    left=3.7cm,
+    right=2.5cm,
+    top=2.5cm,
+    bottom=2.5cm
+}
+
+\usepackage{newtxtext, newtxmath} % Sets global font to Times New Roman
+
+% Note: The requirement "top of the first page of each new chapter, which should be 5.0cm" 
+% is usually handled by the default \chapter command in the report class or can be tweaked 
+% with the titlesec package if exact 5.0cm from the absolute top edge is strictly enforced.
+\usepackage{titlesec}
+
+% --- Chapter Heading ---
+% Centered, 14pt, Bold, format: "Chapter X: Title"
+\titleformat{\chapter}[block]
+  {\normalfont\fontsize{14}{17}\bfseries\centering}
+  {\chaptertitlename\ \thechapter:}
+  {0.5em}
+  {}
+% Remove extra top and bottom spacing around chapter titles
+\titlespacing*{\chapter}{0pt}{0pt}{1\baselineskip} 
+
+% --- Level One Heading (Section) ---
+% Left aligned, 14pt, Bold
+\titleformat{\section}
+  {\normalfont\fontsize{14}{17}\bfseries}
+  {\thesection}
+  {1em}
+  {}
+
+% --- Level Two Heading (Subsection) ---
+% Left aligned, 12pt (normalsize since doc is 12pt), Bold
+\titleformat{\subsection}
+  {\normalfont\normalsize\bfseries}
+  {\thesubsection}
+  {1em}
+  {}
+
+% --- Level Three Heading (Subsubsection) ---
+% Left aligned, 12pt, Bold, Italicised
+\titleformat{\subsubsection}
+  {\normalfont\normalsize\bfseries\itshape}
+  {\thesubsubsection}
+  {1em}
+  {}
+
+% --- Title Page Variables ---
+\title{\MakeUppercase{Dynamic Traffic-Aware Web Caching: Implementing Heuristic Routing to Mitigate AI Scraper Interference}}
+\author{\MakeUppercase{Joseph Alikah}}
+% Add custom commands for specific title page requirements
+\newcommand{\matriculation}{231414}
+\newcommand{\degree}{Bachelor of Science}
+\newcommand{\submissionmonth}{September 2026}
+
+\begin{document}
+
+% --- 1.2 Title Page ---
+\begin{titlepage}
+    \begin{center}
+        \vspace*{2cm}
+        
+        \textbf{\Large \MakeUppercase{Dynamic Traffic-Aware Web Caching: Implementing Heuristic Routing to Mitigate AI Scraper Interference}}
+        
+        \vspace{2cm}
+        
+        \textbf{\MakeUppercase{Joseph Alikah}}
+        
+        \vspace{1cm}
+        Matriculation Number: \matriculation
+        
+        \vspace{2cm}
+        
+        A Thesis/Dissertation Submitted in Partial Fulfilment of the Requirements for the Degree of\\
+        \vspace{0.5cm}
+        \textbf{\degree}
+        
+        \vspace{2cm}
+        
+        Department of Computer Science\\
+        Faculty of Computing\\
+        University of Ibadan
+        
+        \vfill
+        
+        \textbf{\submissionmonth}
+    \end{center}
+\end{titlepage}
+
+% --- Front Matter ---
+\pagenumbering{roman}
+\setcounter{page}{1} % Often starts at ii after title page
+
+% --- 1.6 Certification ---
+\chapter*{Certification}
+\addcontentsline{toc}{chapter}{Certification}
+This is to certify that this research work was carried out by \textbf{ALIKAH, Joseph Ehiagwina}
+with matriculation number \textbf{231414} in the Department of Computer Science, University of Ibadan.
+This research work is considered adequate in partial fulfilment of the requirements for the award
+of a Bachelor of Science in Computer Science.
+
+\vspace{3cm}
+\noindent
+\begin{tabular*}{\textwidth}{@{} l @{\extracolsep{\fill}} c @{}}
+\rule{6cm}{1pt} & \rule{4cm}{1pt} \\
+\textbf{Dr. Nancy Woods} & \textbf{Date} \\
+Project Supervisor & \\
+Department of Computer Science & \\
+\end{tabular*}
+
+\vspace{3cm}
+\noindent
+\begin{tabular*}{\textwidth}{@{} l @{\extracolsep{\fill}} c @{}}
+\rule{6cm}{1pt} & \rule{4cm}{1pt} \\
+\textbf{Prof. Bolanle Oladejo} & \textbf{Date} \\
+Head of Department (HOD) & \\
+Department of Computer Science & \\
+\end{tabular}
+
+\newpage
+
+% --- 1.7 Dedication ---
+\chapter*{Dedication}
+\addcontentsline{toc}{chapter}{Dedication}
+[Your dedication text goes here...]
+\newpage
+
+% --- 1.8 Acknowledgement ---
+\chapter*{Acknowledgement}
+\addcontentsline{toc}{chapter}{Acknowledgement}
+[Your acknowledgement text goes here. Must be concise and not exceed two pages...]
+\newpage
+
+% --- 1.9 Abstract ---
+\chapter*{Abstract}
+\addcontentsline{toc}{chapter}{Abstract}
+[Your abstract text goes here. Not more than 500 words, structured into four paragraphs.]
+
+\vspace{1cm}
+\noindent\textbf{Keywords:} Keyword 1, Keyword 2, Keyword 3, Keyword 4, Keyword 5. % 3 to 5 keywords
+\newpage
+
+% --- 1.12 Abbreviations (Moved before ToC as per spec) ---
+\chapter*{List of Abbreviations}
+\addcontentsline{toc}{chapter}{List of Abbreviations}
+\begin{tabular}{ll}
+\textbf{Abbreviation} & \textbf{Full Meaning} \\
+UI & University of Ibadan \\
+% Add more here
+\end{tabular}
+\newpage
+
+% --- 1.10 Table of Contents ---
+\tableofcontents
+\newpage
+
+% --- 1.11 List of Tables, Figures, Plates ---
+\listoftables
+\newpage
+\listoffigures
+\newpage
+% Custom list of plates if necessary, often combined with figures or created using float package.
+
+% --- Main Body ---
+\pagenumbering{arabic}
+\doublespacing % Often required for thesis, adjust if 1.5 spacing is preferred.
+
+% Include Chapters (1.13 General Structure)
+\include{chapters/01_introduction}
+\include{chapters/02_literature_review}
+\include{chapters/03_methodology}
+\include{chapters/04_results}
+\include{chapters/05_discussion}
+\include{chapters/06_conclusion}
+
+% --- 1.14 List of References ---
+% The spec mentions "University of Ibadan Manual of Style", which typically follows APA format.
+\bibliographystyle{apacite} 
+\bibliography{references}
+
+% --- 1.15 Appendices ---
+\appendix
+\include{chapters/appendix_a}
+
+\end{document}

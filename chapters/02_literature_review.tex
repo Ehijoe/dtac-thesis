@@ -1,0 +1,50 @@
+\chapter{Literature Review}
+
+\label{chap:literature_review}
+
+
+\section{Introduction}
+
+\section{}
+
+
+\section{The Threat Model: AI Scrapers and Web Infrastructure}
+
+What to cover: Discuss the surge in LLM scraping and how it differs from traditional web crawler
+traffic (e.g., higher volume, deeper traversal, `ignoring robots.txt`).
+
+The Key Paper: This is where you introduce the paper proposing separate caches.
+
+Your Critique: Acknowledge their contribution (identifying the problem), but aggressively critique their solution. Separate caches lead to resource fragmentation. If bot traffic drops momentarily, that dedicated bot cache is wasted RAM that human users could have used. This perfectly sets up your argument for a unified cache.
+
+\section{Traffic Classification}
+
+What to cover: Review the papers you found on heuristics for bot vs. human detection. Group them by approach (e.g., IP reputation, behavioral analysis, TLS fingerprinting, request rate).
+
+Your Stance: You don't need to invent a new detection method; you just need to show that these heuristics exist, are accurate, and can be calculated with low enough latency to operate at the routing layer.
+
+The Limitation: Note that most of these papers focus on blocking bots entirely (WAF rules) or showing captchas, rather than gracefully degrading their performance via caching.
+
+\section{Traditional Cache Eviction Algorithms}
+
+What to cover: Review standard eviction policies like LRU (Least Recently Used), LFU (Least Frequently Used), and modern hybrid policies like ARC or LIRS.
+
+The Critique (The "Thrashing" Problem): Explain exactly why these fail under scraper workloads.
+
+LRU is destroyed by scrapers because a bot doing a sequential scan of a database will fill the cache with one-time-read items, evicting the "hot" data humans actually want (cache thrashing).
+
+LFU might suffer if a scraper rapidly hits the same API endpoints, tricking the cache into thinking those endpoints are globally popular.
+
+\section{Synthesis and the Research Gap}
+
+This is the climax of your literature review where you bring the two distinct themes together to reveal the exact hole your research fills.
+
+Use a summary to explicitly state:
+
+We know how to detect bots (Section 2).
+
+We know standard cache eviction fails against them (Section 3).
+
+Existing solutions waste hardware by separating caches (Section 1).
+
+Therefore, the gap is: "There is currently no unified cache eviction policy that dynamically incorporates real-time bot-probability scores to protect human-requested data without physically partitioning hardware resources."
