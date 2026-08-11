@@ -10,6 +10,7 @@
 \usepackage{tocbibind} % Automatically adds lot, lof, bibliography to ToC
 \usepackage{apacite}   % APA style for references
 \usepackage{hyperref}
+\usepackage{parskip}
 \hypersetup{
     colorlinks=true,
     linkcolor=black, % Keeping links black for print quality
@@ -39,9 +40,9 @@
 % Centered, 14pt, Bold, format: "Chapter X: Title"
 \titleformat{\chapter}[block]
   {\normalfont\fontsize{14}{17}\bfseries\centering}
-  {\chaptertitlename\ \thechapter:}
+  {\MakeUppercase{\chaptertitlename\ \thechapter:}}
   {0.5em}
-  {}
+  {\MakeUppercase}
 % Remove extra top and bottom spacing around chapter titles
 \titlespacing*{\chapter}{0pt}{0pt}{1\baselineskip} 
 
@@ -114,6 +115,8 @@
 % --- Front Matter ---
 \pagenumbering{roman}
 \setcounter{page}{1} % Often starts at ii after title page
+\doublespacing
+\noindent
 
 % --- 1.6 Certification ---
 \chapter*{Certification}
@@ -139,20 +142,50 @@ Department of Computer Science & \\
 \textbf{Prof. Bolanle Oladejo} & \textbf{Date} \\
 Head of Department (HOD) & \\
 Department of Computer Science & \\
-\end{tabular}
+\end{tabular*}
 
 \newpage
 
 % --- 1.7 Dedication ---
 \chapter*{Dedication}
 \addcontentsline{toc}{chapter}{Dedication}
-[Your dedication text goes here...]
+\noindent
+
+This report is dedicated to God, whose guidance and blessings have enabled me to navigate
+through the challenges and achieve my goals.
+
+I also dedicate this work to my parents, Dr. Sylvester Alikah and Dr. Anita Alikah, whose
+unwavering support, encouragement, and sacrifices have been the bedrock of my academic and
+personal growth. Their belief in my potential has been a constant source of motivation.
+
 \newpage
 
 % --- 1.8 Acknowledgement ---
 \chapter*{Acknowledgement}
 \addcontentsline{toc}{chapter}{Acknowledgement}
-[Your acknowledgement text goes here. Must be concise and not exceed two pages...]
+\noindent
+
+First and foremost, I would like to express my deepest gratitude to my project supervisor,
+Dr. Nancy Woods, for her invaluable guidance, patience, and continuous support throughout
+this research. Their expertise and constructive feedback were instrumental in shaping this
+thesis and ensuring its successful completion.
+
+I also extend my sincere appreciation to all my lecturers in the Computer Science Department.
+Your dedication to teaching, insightful mentorship, and commitment to academic excellence
+have profoundly shaped my educational journey and prepared me for the future.
+
+To my friends and classmates, thank you for the late-night study sessions, the shared laughter,
+and the mutual encouragement. Navigating the rigors of this degree would not have been the
+same without your camaraderie.
+
+Furthermore, I am endlessly grateful to my parents, Dr. Sylvester Alikah and Dr. Anita Alikah,
+and my extended family. While this work is dedicated to you, I want to acknowledge once again
+the emotional and financial support you have provided. Thank you for always believing in my
+vision and for giving me the foundation I needed to succeed.
+
+Finally, I give thanks to God for the grace, wisdom, and strength granted to me throughout
+my entire academic endeavour.
+
 \newpage
 
 % --- 1.9 Abstract ---
