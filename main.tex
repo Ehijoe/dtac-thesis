@@ -176,7 +176,7 @@ personal growth. Their belief in my potential has been a constant source of moti
 
 First and foremost, I would like to express my deepest gratitude to my project supervisor,
 Dr. Nancy Woods, for her invaluable guidance, patience, and continuous support throughout
-this research. Their expertise and constructive feedback were instrumental in shaping this
+this research. Her expertise and constructive feedback were instrumental in shaping this
 thesis and ensuring its successful completion.
 
 I also extend my sincere appreciation to all my lecturers in the Computer Science Department.
@@ -195,19 +195,6 @@ vision and for giving me the foundation I needed to succeed.
 Finally, I give thanks to God for the grace, wisdom, and strength granted to me throughout
 my entire academic endeavour.
 
-\newpage
-
-% --- 1.9 Abstract ---
-\chapter*{Abstract}
-\addcontentsline{toc}{chapter}{Abstract}
-
-Traditional web caching relies on the natural Zipfian distribution and temporal locality of human browsing to efficiently store popular content at the network edge. However, the explosive growth of Artificial Intelligence (AI) scrapers harvesting training data has fundamentally disrupted this ecosystem. These automated bots generate high-volume, non-recurring scan patterns that break traditional eviction policies like Least Recently Used (LRU). Consequently, scraper traffic induces severe cache pollution, prematurely flushing legitimate content and drastically degrading overall infrastructure performance.
-
-To address this vulnerability, this study engineers a Dynamic Traffic-Aware Cache (DTAC) architecture built in memory-safe Rust. The system introduces a Heuristic Proxy that evaluates passive HTTP anomalies, assigning a real-time probabilistic AI-score to incoming traffic in O(1) time complexity. This continuous score dynamically modifies the cache’s admission and randomized eviction logic, penalizing automated scans using a metadata-only Ghost Cache. Finally, the prototype is rigorously benchmarked against a standard LRU baseline using synthesized workloads of mixed human and AI traffic.
-
-% UI does not need keywords
-% \vspace{1cm}
-% \noindent\textbf{Keywords:} Keyword 1, Keyword 2, Keyword 3, Keyword 4, Keyword 5. % 3 to 5 keywords
 \newpage
 
 % --- 1.12 Abbreviations (Moved before ToC as per spec) ---
@@ -244,6 +231,19 @@ OSI & Open Systems Interconnection \\
 \listoffigures
 \newpage
 % Custom list of plates if necessary, often combined with figures or created using float package.
+
+% --- 1.9 Abstract ---
+\chapter*{Abstract}
+\addcontentsline{toc}{chapter}{Abstract}
+
+Traditional web caching relies on the natural Zipfian distribution and temporal locality of human browsing to efficiently store popular content at the network edge. However, the explosive growth of Artificial Intelligence (AI) scrapers harvesting training data has fundamentally disrupted this ecosystem. These automated bots generate high-volume, non-recurring scan patterns that break traditional eviction policies like Least Recently Used (LRU). Consequently, scraper traffic induces severe cache pollution, prematurely flushing legitimate content and drastically degrading overall infrastructure performance.
+
+To address this vulnerability, this study engineers a Dynamic Traffic-Aware Cache (DTAC) architecture built in memory-safe Rust. The system introduces a Heuristic Proxy that evaluates passive HTTP anomalies, assigning a real-time probabilistic AI-score to incoming traffic in O(1) time complexity. This continuous score dynamically modifies the cache’s admission and randomized eviction logic, penalizing automated scans using a metadata-only Ghost Cache. Finally, the prototype is rigorously benchmarked against a standard LRU baseline using synthesized workloads of mixed human and AI traffic.
+
+% UI does not need keywords
+% \vspace{1cm}
+% \noindent\textbf{Keywords:} Keyword 1, Keyword 2, Keyword 3, Keyword 4, Keyword 5. % 3 to 5 keywords
+\newpage
 
 % --- Main Body ---
 \pagenumbering{arabic}
