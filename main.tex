@@ -191,10 +191,14 @@ my entire academic endeavour.
 % --- 1.9 Abstract ---
 \chapter*{Abstract}
 \addcontentsline{toc}{chapter}{Abstract}
-[Your abstract text goes here. Not more than 500 words, structured into four paragraphs.]
 
-\vspace{1cm}
-\noindent\textbf{Keywords:} Keyword 1, Keyword 2, Keyword 3, Keyword 4, Keyword 5. % 3 to 5 keywords
+Traditional web caching relies on the natural Zipfian distribution and temporal locality of human browsing to efficiently store popular content at the network edge. However, the explosive growth of Artificial Intelligence (AI) scrapers harvesting training data has fundamentally disrupted this ecosystem. These automated bots generate high-volume, non-recurring scan patterns that break traditional eviction policies like Least Recently Used (LRU). Consequently, scraper traffic induces severe cache pollution, prematurely flushing legitimate content and drastically degrading overall infrastructure performance.
+
+To address this vulnerability, this study engineers a Dynamic Traffic-Aware Cache (DTAC) architecture built in memory-safe Rust. The system introduces a Heuristic Proxy that evaluates passive HTTP anomalies, assigning a real-time probabilistic AI-score to incoming traffic in O(1) time complexity. This continuous score dynamically modifies the cache’s admission and randomized eviction logic, penalizing automated scans using a metadata-only Ghost Cache. Finally, the prototype is rigorously benchmarked against a standard LRU baseline using synthesized workloads of mixed human and AI traffic.
+
+% UI does not need keywords
+% \vspace{1cm}
+% \noindent\textbf{Keywords:} Keyword 1, Keyword 2, Keyword 3, Keyword 4, Keyword 5. % 3 to 5 keywords
 \newpage
 
 % --- 1.12 Abbreviations (Moved before ToC as per spec) ---
@@ -226,9 +230,8 @@ UI & University of Ibadan \\
 \include{chapters/01_introduction}
 \include{chapters/02_literature_review}
 \include{chapters/03_methodology}
-\include{chapters/04_results}
-\include{chapters/05_discussion}
-\include{chapters/06_conclusion}
+% \include{chapters/04_results}
+% \include{chapters/05_discussion}
 
 % --- 1.14 List of References ---
 % The spec mentions "University of Ibadan Manual of Style", which typically follows APA format.

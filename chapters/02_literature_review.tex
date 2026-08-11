@@ -2,49 +2,187 @@
 
 \label{chap:literature_review}
 
-
 \section{Introduction}
+The rapid proliferation of large language models (LLMs) and artificial intelligence agents has fundamentally altered the landscape of web traffic. Historically, web infrastructure and caching architectures were optimized for human browsing behavior, which relies heavily on predictable temporal locality and repetitive access to popular content. Today, aggressive AI data scrapers and live-retrieval crawlers overwhelm network edges with sequential, non-repeating ``scan'' patterns that actively degrade traditional cache performance, evicting high-value human data and driving up backend server costs.
 
-\section{}
+While solutions exist in isolation—such as physically partitioning cache hardware for different traffic types, or employing active bot challenges like CAPTCHAs—they introduce severe trade-offs. Active challenges impose unacceptable latency and privacy concerns, while hardware partitioning causes resource fragmentation that is economically unfeasible for small-to-medium web platforms. Consequently, there is a critical need for a unified caching architecture that dynamically incorporates real-time, lightweight bot-probability scores into its eviction logic, safely penalizing scraper traffic without sacrificing the shared resource pool.
 
+To establish the theoretical and technical foundation for this proposed architecture, this literature review examines three core areas at the intersection of network security and systems memory management. The scope of this chapter is structured as follows:
 
-\section{The Threat Model: AI Scrapers and Web Infrastructure}
+\begin{itemize}
+    \item \textbf{Section 2.2 (The Impact of AI Scrapers on Web Infrastructure)} defines the modern threat landscape, detailing how automated LLM data collection breaks the foundational assumptions of human web traffic distributions.
+    \item \textbf{Section 2.3 (Existing Mitigation Strategies and Resource Partitioning)} evaluates current architectural solutions, specifically highlighting the operational flaws and hardware inefficiencies of physically split caches.
+    \item \textbf{Section 2.4 (Traffic Classification and Bot Heuristics)} reviews the evolution of bot detection, proving that it is mathematically feasible to assign an aggregate ``AI-score'' in $\mathcal{O}(1)$ time complexity using passive, lightweight network heuristics.
+    \item \textbf{Section 2.5 and beyond (Cache Eviction Algorithms)} explores the progression from traditional eviction policies (such as LRU and LFU) to modern, scan-resistant algorithms (such as ARC, S3FIFO, and SIEVE), ultimately identifying the research gap for integrating probabilistic trust scores directly into state-of-the-art eviction engines.
+\end{itemize}
 
-What to cover: Discuss the surge in LLM scraping and how it differs from traditional web crawler
-traffic (e.g., higher volume, deeper traversal, `ignoring robots.txt`).
+By synthesizing these domains, this review demonstrates that while the tools for low-latency bot detection and scan-resistant caching exist independently, they have not yet been bridged to form a dynamic, AI-aware cache eviction policy.
 
-The Key Paper: This is where you introduce the paper proposing separate caches.
+\section{The Impact of AI Scrapers on Web Infrastructure}
+To understand why modern web caching systems are failing under the weight of automated traffic, it is necessary to examine how the fundamental assumptions of web request distributions have been disrupted. This section outlines the historical baseline of human web traffic, the evolution of automated agents, and how the specific access patterns of large language model (LLM) scrapers actively degrade caching infrastructure.
 
-Your Critique: Acknowledge their contribution (identifying the problem), but aggressively critique their solution. Separate caches lead to resource fragmentation. If bot traffic drops momentarily, that dedicated bot cache is wasted RAM that human users could have used. This perfectly sets up your argument for a unified cache.
+\subsection{Historical Context: Human Traffic and Temporal Locality}
+Traditional web cache architectures were designed around the predictable nature of human browsing. Foundational research demonstrated that human web requests follow a Zipf-like distribution, meaning a small number of popular web objects receive the vast majority of requests, while a ``long tail'' of objects are accessed infrequently \cite{breslau_web_1999}. 
 
-\section{Traffic Classification}
+Because human traffic exhibits high temporal locality—where recently accessed data is highly likely to be requested again in the near future—caching systems could easily store popular content at the network edge to reduce server load and latency. As long as traffic predominantly adhered to this Zipfian model, traditional eviction algorithms performed exceptionally well.
 
-What to cover: Review the papers you found on heuristics for bot vs. human detection. Group them by approach (e.g., IP reputation, behavioral analysis, TLS fingerprinting, request rate).
+\subsection{The Modern Web Landscape: The Rise of AI Bots}
+In the modern era, the web is no longer exclusively navigated by humans. While web scrapers and crawlers are ``nearly as old as the internet'' \cite{kim_scrapers_2025}, their purpose and scale have evolved. Early automated traffic was largely driven by search engine indexers and marketing bots analyzing Search Engine Optimization (SEO), which became a crucial mechanism for digital marketing \cite{berman_role_2012}.
 
-Your Stance: You don't need to invent a new detection method; you just need to show that these heuristics exist, are accurate, and can be calculated with low enough latency to operate at the routing layer.
+However, the explosive growth of artificial intelligence has fundamentally altered the threat landscape. \citeA{kim_scrapers_2025} define crawling as ``the process of systematically accessing links on the web,'' and scraping as ``the act of downloading information from each link.'' They note that ``interest in data scraping has only increased as AI models have grown in size and scope.'' Today, automated web traffic includes highly aggressive LLM training bots and live-retrieval AI agents that place unprecedented strain on web infrastructure.
 
-The Limitation: Note that most of these papers focus on blocking bots entirely (WAF rules) or showing captchas, rather than gracefully degrading their performance via caching.
+\subsection{AI Bot Access Patterns: The ``Scan'' Problem}
+The core issue with modern AI bots is that their access patterns are entirely antithetical to the Zipf-like distributions that caches rely on. \citeA{zhang_rethinking_2026} categorize modern AI bots into two distinct groups, both of which severely disrupt caching:
 
-\section{Traditional Cache Eviction Algorithms}
+\begin{itemize}
+    \item \textbf{AI Data Scrapers:} These bots focus on ``harvesting data to build large training corpora for models like LLMs.'' They exhibit exceptionally high unique access ratios. Data from large-scale legitimate web crawls confirms that the vast majority of fetched pages are entirely unique, prioritizing breadth over repetition.
+    \item \textbf{AI Search Crawlers:} These bots fetch content to support live AI services, such as retrieval-augmented generation (RAG) for answering questions. They ``rely on accessing a broad set of unique pages to achieve better task performance,'' generating high-volume traffic with low reuse.
+\end{itemize}
 
-What to cover: Review standard eviction policies like LRU (Least Recently Used), LFU (Least Frequently Used), and modern hybrid policies like ARC or LIRS.
+Both categories generate what \citeA{zhang_rethinking_2026} define as a scan pattern: ``a request stream that touches a large number of distinct objects with little-to-no reuse in a short period.'' This observation aligns with earlier behavioral analyses by \citeA{alnoamany_access_2013}, who found that while human browsing is varied and deep, automated robots are limited almost exclusively to superficial ``Dips'' (single accesses) and ``Skims'' (fetching lists of available pages).
 
-The Critique (The "Thrashing" Problem): Explain exactly why these fail under scraper workloads.
+When caching algorithms process these scan patterns, the results are catastrophic for performance. \citeA{zhang_rethinking_2026} found that under pure Zipfian (human) traffic, standard algorithms achieve 70--80\% hit rates. However, ``as the fraction of AI traffic increases, hit ratios decline steeply, falling below 30\% for all policies at a 75\% scan ratio.'' Scrapers effectively flush the cache, evicting high-value, frequently requested human content in favor of single-use data that will not be requested again.
 
-LRU is destroyed by scrapers because a bot doing a sequential scan of a database will fill the cache with one-time-read items, evicting the "hot" data humans actually want (cache thrashing).
+\subsection{The Failure of Voluntary Compliance and Traditional Defenses}
+Mitigating these aggressive scan patterns is complicated by the fact that modern bots frequently evade both voluntary guidelines and traditional security measures.
 
-LFU might suffer if a scraper rapidly hits the same API endpoints, tricking the cache into thinking those endpoints are globally popular.
+Historically, web administrators relied on the \texttt{robots.txt} protocol to dictate which parts of a site could be crawled. However, \citeA{kim_scrapers_2025} found that modern bots selectively ignore these directives. Stricter directives correlate with lower compliance, and ``certain categories of bots, including AI search crawlers, rarely check \texttt{robots.txt} at all,'' rendering voluntary compliance mechanisms highly risky and unreliable.
 
-\section{Synthesis and the Research Gap}
+When administrators implement active defenses, modern AI systems quickly adapt. \citeA{ousat_broken_2026} stress that ``many deployed defenses are fragile under composition attacks.'' Their research highlights that traditional web bot management systems are highly vulnerable to automated solvers:
+\begin{itemize}
+    \item Text-based challenges have been defeated by Generative Adversarial Networks (GANs) and Convolutional Neural Networks (CNNs) with success rates exceeding 94\%.
+    \item Image-based challenges (like reCaptcha) have been bypassed by deep learning solvers exploiting image repetition with 70\% accuracy.
+    \item Behavioral scoring systems (like reCaptcha v3) have been compromised using reinforcement learning agents trained to simulate human-like browsing, achieving evasion rates up to 99.6\%.
+\end{itemize}
 
-This is the climax of your literature review where you bring the two distinct themes together to reveal the exact hole your research fills.
+Because AI scrapers ignore voluntary protocols, easily bypass traditional friction-based security, and fundamentally break standard caching algorithms, there is a critical need for alternative infrastructure defenses that operate passively at the caching layer.
 
-Use a summary to explicitly state:
+\section{Existing Mitigation Strategies and Resource Partitioning}
+As the strain of automated AI traffic on web infrastructure grows, several mitigation strategies have been proposed. These range from network-layer blocking to architectural redesigns of caching tiers. However, existing solutions often introduce unacceptable trade-offs in accuracy, cost, or hardware efficiency, highlighting the need for a more dynamic approach.
 
-We know how to detect bots (Section 2).
+\subsection{Strict Bot Blocking and Rate Limiting}
+The most direct response to aggressive automated traffic is strict blocklisting or aggressive rate limiting at the network edge. However, in the modern web ecosystem, blocking all bots is largely infeasible. Overly aggressive blocking mechanisms inevitably produce false positives, incorrectly blocking legitimate human users and degrading the user experience. Furthermore, not all automated traffic is malicious or unwanted; benign bots, such as search engine indexers and SEO crawlers, are critical for a domain's visibility and discoverability. Consequently, mitigation strategies cannot rely purely on binary blocking; they must allow some automated traffic while mitigating its impact on infrastructure.
 
-We know standard cache eviction fails against them (Section 3).
+\subsection{Scan-Resistant Eviction Algorithms}
+Recognizing that strict blocking is imperfect, recent research has explored how cache eviction policies themselves can absorb the impact of AI scrapers. Traditional policies like Least Recently Used (LRU) and Least Frequently Used (LFU) degrade rapidly under scan-heavy traffic. However, algorithms designed to penalize ``one-hit wonders'' offer better resilience.
 
-Existing solutions waste hardware by separating caches (Section 1).
+\citeA{zhang_rethinking_2026} evaluated state-of-the-art eviction algorithms and found that policies like SIEVE, S3FIFO, and ARC perform significantly better under scraper loads. They note that these policies ``maintain over 75\% hit ratio for human requests even when scan ratio reaches 50\%, whereas simpler strategies like LRU, LFU, and FIFO degrade more quickly.'' Ultimately, Zhang et al. conclude that ``smarter eviction algorithms can serve as lightweight traffic filters'' offering an additional layer of protection against AI interference.
 
-Therefore, the gap is: "There is currently no unified cache eviction policy that dynamically incorporates real-time bot-probability scores to protect human-requested data without physically partitioning hardware resources."
+While these advanced algorithms are an improvement, they are fundamentally naive to the origin of the request. They infer bot-like behavior purely from access patterns (recency and frequency) after the cache is already under pressure. Integrating explicit AI detection scores into the eviction logic presents a clear avenue to improve upon the state-of-the-art, proactively preserving hit rates before human data is evicted.
+
+\subsection{Hardware Partitioning and Split Caches}
+To prevent AI traffic from overwhelming main servers and edge caches, \citeA{zhang_rethinking_2026} propose a ``composable caching hierarchy that coordinates differentiated tiers for human and AI workloads.'' Instead of a single shared cache, this architecture uses overlapping cache tiers with distinct roles. To balance performance and cost, they recommend that ``human traffic should continue to be served primarily from edge caches optimized for low latency and high hit ratios,'' while AI requests are routed to separate, deeper storage tiers.
+
+This split-cache approach successfully isolates the workloads, ensuring that AI scan patterns do not flush human-requested data. For massive Content Delivery Networks (CDNs) and enterprise-scale tech companies, this tiering is highly effective.
+
+\subsection{The Case for Unified, AI-Aware Eviction}
+While split caches offer excellent isolation, they are impractical for the vast majority of small-to-medium web platforms. Implementing a multi-tier caching architecture requires significant upfront investment, complex routing logic, and increased maintenance overhead.
+
+More importantly, physical separation leads to severe hardware fragmentation. During periods of low bot activity, the memory allocated to the AI cache tier sits idle and cannot be leveraged to serve human traffic, resulting in wasted resources. 
+
+A more flexible and resource-efficient solution—and the core focus of this thesis—is a unified caching architecture governed by an AI-aware eviction algorithm. Instead of physically partitioning hardware, a single shared cache can dynamically assign real-time AI risk scores to incoming requests. By weighting eviction probabilities based on these bot scores, the system can aggressively evict single-use scraper data during high-traffic periods while retaining the ability to spot broad trends in AI requests. This unified approach eliminates hardware fragmentation and preserves overall cache hit rates, selectively prioritizing human traffic exactly when infrastructure is under strain.
+
+\section{Traffic Classification and Bot Heuristics}
+To implement an effective, dynamic cache eviction policy, the system’s routing layer must first accurately distinguish between human and AI scraper traffic. Crucially, this classification must occur with minimal computational overhead—ideally in $\mathcal{O}(1)$ time complexity. If calculating a request's ``AI-score'' introduces latency that exceeds the time saved by a cache hit, the caching layer becomes effectively useless.
+
+Existing web bot detection systems are primarily categorized into rule-based heuristics, statistical methods, and machine learning (ML)-based systems \cite{martinez_llamas_balancing_2025}. This section evaluates these methodologies, progressing from high-friction active challenges to the passive, lightweight heuristics that form the foundation of our proposed $\mathcal{O}(1)$ router architecture.
+
+\subsection{Active Detection and Behavioural Biometrics}
+Historically, active challenges such as CAPTCHAs served as the primary gatekeepers against automated web traffic. However, advances in computer vision and machine learning have drastically degraded their efficacy. As \citeA{searles_empirical_2023} note, automated tools achieved over 99\% accuracy on text-transcription CAPTCHAs by 2014. This forced a defensive evolution toward complex object recognition, puzzle-solving (e.g., slider-based CAPTCHAs), and dynamic game-based interactions (e.g., reCAPTCHA, hCAPTCHA). Furthermore, scrapers frequently bypass these mechanisms entirely by outsourcing to ``CAPTCHA farms''—sweatshop-like operations where humans are paid to solve puzzles \cite{searles_empirical_2023}.
+
+To counter sophisticated bots and human-solvers, modern active defenses have integrated behavioural biometrics. Because users interact with webpages via manual, visual navigation, systems can analyze nuanced behaviours like mouse movements, scrolling, and keystroke dynamics \cite{martinez_llamas_balancing_2025}. \citeA{ousat_broken_2026} highlight that third-party solver services struggle against behavioural systems like reCAPTCHA v3 because they ``merely inject a valid token without reproducing the behavioral signals and browser-environment characteristics.''
+
+Despite their security benefits, active challenges and behavioural biometrics are structurally incompatible with network-layer cache routing. They require client-side execution, force the server to wait for a behavioural payload, and introduce severe latency. Furthermore, behavioural biometrics inadvertently expose highly detailed identifiers that raise significant user privacy and profiling concerns \cite{martinez_llamas_balancing_2025}.
+
+\subsection{Passive Traffic Analysis and Fingerprinting}
+In contrast to active challenges, passive traffic analysis evaluates the continuous stream of metadata generated during a user’s session without demanding client-side execution. As \citeA{martinez_llamas_balancing_2025} explain, web bots interact with servers via HTTP requests, meaning ``domains inherently possess sufficient data to infer the nature of the interacting entity.''
+
+Rule-based systems evaluate real-time data inputs like IP addresses, traffic surges, and HTTP headers (User-Agent, Accept-Language, and Referer) to detect deviations from expected human norms. A fundamental, high-confidence heuristic is the interaction with \texttt{robots.txt}: compliant crawlers declare themselves by accessing the file, while malicious scrapers deliberately bypass it to avoid detection and scrape restricted content \cite{martinez_llamas_balancing_2025}.
+
+More advanced passive techniques utilize fingerprinting to generate persistent, though not necessarily unique, identifiers based on hardware and software properties. Browser fingerprinting aggregates data like screen resolution, language preferences, and WebGL support, while TLS fingerprinting analyzes the unique characteristics and strict ordering of cipher suites during a secure handshake \cite{martinez_llamas_balancing_2025}. While TLS fingerprinting operates passively at the network layer, aggregating and matching high-entropy fingerprints in real-time introduces computational overhead that scales linearly with traffic, potentially violating the strict $\mathcal{O}(1)$ routing requirements of a cache eviction engine.
+
+\subsection{Lightweight Heuristics for Real-Time Systems}
+To achieve the speed necessary for network-layer cache routing, recent literature has pivoted toward ultra-lightweight heuristics that guarantee constant-time execution while respecting user privacy.
+
+\citeA{van_boxem_shy_2026} address this with Shy Guys, a highly efficient, passive detection method that operates entirely on standard web server logs. By combining standard User-Agent string analysis with structural heuristics—such as monitoring requests for hidden assets like favicons—their method successfully identifies a vast majority of automated traffic without requiring client-side scripts. Because it relies on basic string matching and request flags, it is exceptionally efficient and privacy-preserving.
+
+Addressing the rise of distributed LLM data collection, \citeA{hoetzlein_protecting_2025} proposed Logrip, a defense mechanism against highly distributed AI bots. Recognizing that modern scrapers easily evade traditional per-IP rate-limiting by rotating addresses, Logrip utilizes hierarchical IP hashing. By aggregating request frequencies across subnet classes (e.g., /16 and /24 blocks) and applying statistical measures to identify mechanical access patterns, Logrip detects distributed bots. Crucially for caching infrastructure, hierarchical IP hashing can be implemented using standard Hash Maps or Bloom filters, ensuring that the subnet lookups execute in $\mathcal{O}(1)$ time complexity.
+
+\subsection{Composite Trust Scoring and AI-Risk Probability}
+No single heuristic can definitively identify an AI scraper without risking false positives. Consequently, the industry has shifted away from binary blocklisting toward the model of Composite Trust Scoring \cite{chandra_composite_2026}.
+
+In this architecture, a request’s validity is evaluated concurrently across multiple independent, lightweight layers—such as the IP reputation (from Logrip), header anomalies (from Shy Guys), and basic passive constraints (e.g., \texttt{robots.txt} evasion). Each heuristic $i$ contributes a weighted penalty $w_i$ to a total aggregate score $S$, yielding a probability metric $P(\text{bot}) \in [0, 1]$.
+
+This paradigm directly validates the ``Router'' half of this project’s architecture. By restricting the trust-scoring engine to computationally inexpensive inputs, the system can dynamically compile a composite AI-score in constant time. This score provides a mathematically sound, low-latency probability metric that can safely interface with the cache eviction algorithm, effectively isolating and penalizing scraper traffic without fragmenting shared hardware resources.
+
+\section{Traditional Caching Algorithms}
+The evolution of automated memory management and cache eviction policies traces its origins to early central processing unit (CPU) architecture and database systems. The primary objective of these foundational algorithms was to approximate Belady’s theoretical optimal algorithm (MIN), which established a strict upper bound for cache hit ratios by clairvoyantly evicting the item that would be requested furthest in the future. Because real-world systems lack perfect knowledge of future access sequences, online caching policies were engineered to rely on historical access metadata—primarily recency, frequency, and insertion time—as proxies for future probability.
+
+The early paradigm of cache management was defined by three canonical algorithms: First-In, First-Out (FIFO), Least Recently Used (LRU), and Least Frequently Used (LFU). While these algorithms formed the backbone of early computing, analyzing their mechanics reveals inherent structural limitations when subjected to modern, non-stationary workloads.
+
+\subsection{First-In, First-Out (FIFO)}
+FIFO operates under the simplest possible heuristic: it treats the cache as a linear queue, uniformly evicting the oldest admitted object regardless of its subsequent access history. 
+
+The mathematical and operational simplicity of FIFO is its primary strength. Maintaining a strict queue requires only minimal metadata overhead, achieving $\mathcal{O}(1)$ time complexity for both insertions and evictions without necessitating the expensive pointer manipulations or locking mechanisms required by more complex algorithms. 
+
+However, historically, FIFO was widely dismissed for advanced memory management due to its total blindness to temporal locality. Because it ignores whether an item was accessed one second ago or one hour ago, a highly popular object will still be inevitably evicted once it reaches the tail of the queue. Furthermore, basic FIFO is notoriously susceptible to Belady’s Anomaly—a counterintuitive phenomenon where increasing the overall cache capacity can actually decrease the hit ratio for specific cyclic access patterns.
+
+\subsection{Least Recently Used (LRU)}
+To address the limitations of FIFO, LRU introduced the concept of temporal locality, operating on the heuristic assumption that objects accessed in the recent past are highly likely to be accessed again in the near future. LRU became the ubiquitous industry standard, fundamentally driving early hardware cache and software database memory design.
+
+Mechanically, classical LRU is implemented via a doubly linked list coupled with a hash map. When a cache miss occurs, the new object is inserted at the head of the list (Most Recently Used). Crucially, upon a cache hit, the accessed object must be unlinked from its current position and promoted back to the head of the list in $\mathcal{O}(1)$ time. When the cache reaches its maximum capacity, the item at the tail (Least Recently Used) is evicted.
+
+While LRU mathematically excels under workloads characterized by the Independent Reference Model (IRM) and short-term temporal clustering, its reliance on structural mutation causes significant hardware bottlenecks. Every read operation mandates a write operation (pointer updates), introducing severe lock contention and CPU cache-line invalidations in modern multi-core, highly concurrent environments.
+
+\subsection{Least Frequently Used (LFU)}
+Rather than optimizing for recency, LFU tracks the aggregate access count of each object over its entire lifespan within the cache, evicting the item with the absolute lowest frequency score. From a theoretical standpoint, LFU is optimal for static, heavily skewed workloads (such as Zipfian distributions) where a fixed subset of long-term ``hot'' objects perpetually dominates the request stream.
+
+Despite this, LFU introduces severe operational overhead and pathological degradation known as ``frequency pollution.'' Maintaining sorted frequency counts natively requires $\mathcal{O}(\log N)$ priority queues or complex $\mathcal{O}(1)$ segmented bucket structures. More critically, if an object experiences a massive, temporary burst in popularity, it accumulates a high frequency score that guarantees its permanence in the cache long after its actual popularity has decayed to zero. Because LFU lacks a native ``aging'' mechanism, stale items with historically high access counts chronically occupy cache capacity, starving newer, genuinely hot items of memory allocation.
+
+\subsection{Theoretical Constraints in Modern Workloads}
+The foundational models that validated LRU and LFU relied heavily on steady-state Markov analysis and the assumption of stationary, Independent Reference Models (IRM). As \citeA{hasslinger_overview_2023} note in their comprehensive review of caching analysis methodologies, early algorithms were evaluated primarily through static bounds and simplistic timing constraints.
+
+However, modern internet architecture—spanning Content Delivery Networks (CDNs) and distributed cloud storage—violates these foundational assumptions. Modern caching systems must manage highly correlated request patterns, unpredictable burst traffic, and heterogeneous, varying data object sizes. \citeA{hasslinger_overview_2023} emphasize that traditional heuristic policies fail to achieve optimal accuracy against arbitrary, dynamic request sequences because they enforce rigid, pre-defined rules that cannot balance the rapidly shifting trade-offs between network-wide traffic load, delay reduction, and dynamic storage overhead.
+
+Specifically, classic algorithms like LRU possess no defensive mechanism against sequential scans or highly uncorrelated request streams. When a massive sequence of novel requests traverses the cache, LRU faithfully promotes every single item to the head of the list, systematically flushing out the historically valuable working set. This vulnerability—combined with the inability of basic Markovian models to predict non-stationary web traffic—necessitated the paradigm shift toward the probabilistic, adaptive, and scan-resistant architectures that define the modern state-of-the-art.
+
+\subsection{Modern State-of-the-Art Caching}
+Driven by the need for scan resistance, multi-core scalability, and adaptability, modern state-of-the-art caching algorithms have abandoned naive single-list heuristics in favor of sophisticated hybrid architectures.
+
+\subsubsection{Adaptive Replacement Cache (ARC)}
+Developed to eliminate the necessity for manual cache tuning, ARC dynamically balances between recency and frequency. ARC maintains two internal lists: $L_1$ (capturing recency) and $L_2$ (capturing frequency), each partitioned into actual cached items and ``ghost'' entries that record metadata for recently evicted items to track missed opportunities. By employing a self-tuning feedback controller governed by a target size parameter $p$, ARC continuously adapts its partitioning strategy based on whether cache hits occur in the recency or frequency lists. Synthesizing insights from \textit{Towards a methodology for parameter selection in adaptive cache management} \cite{vysotska_towards_2025}, ARC successfully automates parameter adaptation, eliminating the brittle heuristics of fixed-size segmented caches and adjusting seamlessly to workload phase changes.
+
+\subsubsection{S3FIFO (Simple, Scalable, and Scan-Resistant FIFO)}
+Challenging the long-held dogma that complex LRU/LFU approximations are mandatory for high performance, S3FIFO demonstrates that simple FIFO queues can achieve state-of-the-art efficiency. Detailed extensively in \textit{FIFO Queues are All You Need for Cache Eviction} \cite{yang_fifo_2023}, S3FIFO organizes the cache into three distinct FIFO queues: a small static admission queue ($\text{FIFO}_{\text{small}}$), a main cache queue ($\text{FIFO}_{\text{main}}$), and a ghost queue to track evicted items.
+
+Items enter $\text{FIFO}_{\text{small}}$ upon initial access. When evicted from $\text{FIFO}_{\text{small}}$, an item is promoted to $\text{FIFO}_{\text{main}}$ only if its small frequency bit (typically a 1-bit counter) is set; otherwise, it is permanently evicted. Within $\text{FIFO}_{\text{main}}$, items are evaluated similarly: if their frequency bit is set upon reaching the tail, their bit is cleared and they are given a second chance by cycling back to the head of $\text{FIFO}_{\text{main}}$. This multi-queue structure provides robust scan resistance, preventing one-hit wonders from displacing the working set while avoiding the complex pointer adjustments and lock contention characteristic of linked-list LRU implementations.
+
+\subsubsection{SIEVE}
+Streamlining cache design to its absolute theoretical limit, SIEVE provides a turn-key, highly efficient eviction algorithm tailored specifically for modern web caches. As analyzed in \textit{SIEVE is Simpler than LRU: An Efficient Turn-Key Eviction Algorithm for Web Caches} \cite{zhang_sieve_2024}, SIEVE operates on a single circular FIFO queue accompanied by a single ``hand'' pointer and a single visited bit per object.
+
+\begin{itemize}
+    \item \textbf{Insertion:} New items are inserted into the queue, and their visited bit is initialized to false.
+    \item \textbf{Hits:} When a cache hit occurs, the object's visited bit is set to true. No structural relocation (such as moving nodes in a linked list) is performed, completely eliminating locking bottlenecks in concurrent environments.
+    \item \textbf{Eviction:} When space is needed, the hand pointer examines the object at its current position. If the object's visited bit is true, SIEVE clears the bit (sparing the object for another cycle) and advances the hand. If the visited bit is false, the object is immediately evicted.
+\end{itemize}
+SIEVE achieves exceptional scan resistance and hit ratios comparable to or exceeding complex algorithms like ARC and TinyLFU, all while maintaining an extraordinarily small code footprint and optimal concurrency on modern multi-core systems.
+
+\section{Cost-Aware and Multi-Tier Caching}
+To bridge the gap between static caching heuristics and dynamic, weighted eviction policies, it is necessary to examine how cache algorithms process variables beyond standard temporal and frequency metrics. While traditional algorithms implicitly assume that all cached objects have an equal retrieval cost and equal importance, modern distributed systems routinely handle heterogeneous data where the penalty for a cache miss varies drastically.
+
+This paradigm shift is deeply explored in \textit{Access-Time-Aware Cache Algorithms} \cite{neglia_access-time-aware_2017}, which highlights that in multi-tier storage architectures (spanning DRAM, NVMe, and remote block storage), the latency required to fetch an object dictates its true value to the system. An access-time-aware algorithm calculates a utility weight for each item—often factoring in the object's byte size and the CPU or network cost required to compute or retrieve it. By integrating this cost metric directly into the eviction logic, the cache intelligently retains items that are computationally expensive to regenerate, even if they are accessed slightly less frequently than cheaper items.
+
+Furthermore, the integration of external metrics into caching logic is supported by the findings in \textit{A Review of Probabilistic Techniques Used for Web browsers' Caching} \cite{kakar_review_2020} and \textit{Probabilistic methods for web caching} \cite{starobinski_probabilistic_2001}. These papers demonstrate that cache admission and eviction do not need to be absolute, binary decisions. Instead, algorithms can utilize probabilistic thresholds—such as coin-flipping admission based on object size or dynamic decay rates based on network congestion—to optimize memory utilization. Similarly, the adaptive balancing mechanisms detailed in \textit{Towards a methodology for parameter selection in adaptive cache management} \cite{vysotska_towards_2025} prove that caching policies can continuously adjust their internal parameters in real-time based on environmental feedback, without requiring hardcoded, static rules.
+
+These advancements in cost-aware and probabilistic caching establish a crucial precedent: eviction algorithms can successfully weight items differently based on externally derived metrics without destroying throughput. If a cache can adjust an object's eviction priority based on its fetch latency or byte size, it stands to reason that it can also adjust an object's priority based on its origin. This validates the foundational argument of this project: the caching layer can ingest a new external variable—specifically, a real-time bot-probability score—treating the malicious nature of the requester as a ``cost'' metric to dynamically penalize scraper traffic.
+
+\section{Synthesis and Research Gap}
+The modern web infrastructure is currently facing an unprecedented volume of automated, sequential scan traffic driven by LLM data scrapers. As outlined in Section 2.2, these aggressive access patterns fundamentally break the traditional assumptions of human temporal locality. When this non-stationary traffic collides with standard caching architecture, it induces severe cache thrashing, evicting high-value data and drastically inflating backend compute costs.
+
+While robust bot detection heuristics exist (Section 2.4), demonstrating that it is mathematically feasible to calculate an aggregate, $\mathcal{O}(1)$ AI-probability score at the network edge, these classification systems are traditionally isolated from memory management. Conversely, the vulnerability of standard caching algorithms (such as LRU and LFU) to sequential scans is well documented (Section 2.5). Although modern state-of-the-art algorithms like SIEVE and S3FIFO (detailed in \textit{SIEVE is Simpler than LRU} \cite{zhang_sieve_2024} and \textit{FIFO Queues are All You Need for Cache Eviction} \cite{yang_fifo_2023}) have successfully introduced structural scan-resistance, they remain entirely agnostic to the identity of the requester. They treat all traffic as legitimate, attempting to solve cache pollution purely through structural queues rather than actively filtering malicious inputs.
+
+Currently, the industry's primary response to automated traffic pollution relies on either computationally heavy active challenges (which degrade user experience) or inefficient hardware partitioning (Section 2.3). Physically isolating cache hardware for different traffic classifications results in severe resource fragmentation, leaving expensive DRAM underutilized during periods of low bot activity.
+
+Therefore, a critical void exists at the intersection of network security and systems architecture. There is no existing literature on a unified cache eviction policy that dynamically integrates real-time, probabilistic bot-scores directly into its core eviction engine. 
+
+This research aims to fill this gap. By synthesizing the $\mathcal{O}(1)$ passive heuristics of modern traffic classification with the structurally resilient, scan-resistant architectures of modern caching (such as SIEVE and S3FIFO), this project proposes an AI-aware caching policy. This novel architecture will utilize the bot-probability score as a weighted penalty during the cache admission and eviction phases, actively quarantining and evicting scraper traffic while maintaining a single, highly efficient, shared resource pool.
