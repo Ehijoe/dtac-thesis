@@ -41,5 +41,5 @@ The thesis text must agree with these copies from the implementation repo. They 
 - Label prefixes: `chap:`, `fig:`, `tab:`, `eq:`.
 - Tables use `booktabs` (`\toprule`/`\midrule`/`\bottomrule`). Charts are inline `pgfplots`; the preamble defines a shared `resultaxis` style and one greyscale style per algorithm (`algdtac`, `algnoscore`, `alglru`, `algsieve`, `algsfifo`). Reuse them so all charts look the same.
 - Results tables report mean ± 95% CI half-width over seeds 1–5, and paired differences as `dtac − X`. Copy numbers from `results/summary.md`/`summary.csv`, never from memory.
-- New abbreviations go in the alphabetical table in `main.tex`'s "List of Abbreviations".
+- New abbreviations go in the alphabetical `longtable` in `main.tex`'s "List of Abbreviations" (a `longtable` because the list spans two pages).
 - Title-page text (title, name, matric number, date) is hardcoded inside the `titlepage` environment. The `\title`, `\author`, `\matriculation`, `\degree`, and `\submissionmonth` macros are defined but the title page doesn't use them, so edits must go into the `titlepage` block itself.

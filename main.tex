@@ -7,6 +7,7 @@
 \usepackage{amsmath, amssymb}
 \usepackage{graphicx}
 \usepackage{booktabs}
+\usepackage{longtable}
 \usepackage{pgfplots}
 \pgfplotsset{
     compat=1.18,
@@ -220,24 +221,46 @@ my entire academic endeavour.
 % --- 1.12 Abbreviations (Moved before ToC as per spec) ---
 \chapter*{List of Abbreviations}
 \addcontentsline{toc}{chapter}{List of Abbreviations}
-\begin{tabular}{ll}
+\begin{longtable}{@{}ll}
 \textbf{Abbreviation} & \textbf{Full Meaning} \\
+\endhead
 AI & Artificial Intelligence \\
+API & Application Programming Interface \\
+ARC & Adaptive Replacement Cache \\
 ASN & Autonomous System Number \\
+AUC & Area Under the Curve \\
+BHR & Byte Hit Rate \\
 CDF & Cumulative Distribution Function \\
+CDN & Content Delivery Network \\
+CHR & Cache Hit Ratio \\
+CI & Confidence Interval \\
+CPI & Cache Pollution Index \\
+CPU & Central Processing Unit \\
 DDoS & Distributed Denial of Service \\
 DNN & Deep Neural Network \\
 DTAC & Dynamic Traffic-Aware Cache \\
 EWMA & Exponentially Weighted Moving Average \\
 FIFO & First-In, First-Out \\
+FPR & False-Positive Rate \\
 GMM & Gaussian Mixture Model \\
 HTTP & Hypertext Transfer Protocol \\
 IP & Internet Protocol \\
+JSON & JavaScript Object Notation \\
 LFU & Least Frequently Used \\
+LLM & Large Language Model \\
+LLR & Log-Likelihood Ratio \\
 LRU & Least Recently Used \\
-MRU & Most Recently Used \\
+NAT & Network Address Translation \\
 OSI & Open Systems Interconnection \\
-\end{tabular}
+RAG & Retrieval-Augmented Generation \\
+ROC & Receiver Operating Characteristic \\
+RSS & Resident Set Size \\
+S3-FIFO & Simple, Scalable, Scan-resistant FIFO \\
+SEO & Search Engine Optimization \\
+SSD & Solid State Drive \\
+TLS & Transport Layer Security \\
+VPN & Virtual Private Network \\
+\end{longtable}
 \newpage
 
 % --- 1.10 Table of Contents ---
@@ -257,7 +280,9 @@ OSI & Open Systems Interconnection \\
 
 Traditional web caching relies on the natural Zipfian distribution and temporal locality of human browsing to efficiently store popular content at the network edge. However, the explosive growth of Artificial Intelligence (AI) scrapers harvesting training data has fundamentally disrupted this ecosystem. These automated bots generate high-volume, non-recurring scan patterns that break traditional eviction policies like Least Recently Used (LRU). Consequently, scraper traffic induces severe cache pollution, prematurely flushing legitimate content and drastically degrading overall infrastructure performance.
 
-To address this vulnerability, this study engineers a Dynamic Traffic-Aware Cache (DTAC) architecture built in memory-safe Rust. The system introduces a Heuristic Proxy that evaluates passive HTTP anomalies, assigning a real-time probabilistic AI-score to incoming traffic in O(1) time complexity. This continuous score dynamically modifies the cache’s admission and randomized eviction logic, penalizing automated scans using a metadata-only Ghost Cache. Finally, the prototype is rigorously benchmarked against a standard LRU baseline using synthesized workloads of mixed human and AI traffic.
+To address this vulnerability, this study designs and implements a Dynamic Traffic-Aware Cache (DTAC) in Rust. A lightweight Heuristic Proxy evaluates passive signals (per-IP request velocity, missing browser headers, the absence of auxiliary asset fetches, and datacenter network origin) and combines them in a log-odds model into a continuous bot-probability score for every request, at a bounded per-request cost. The cache engine weights each request's contribution to a resource's decaying popularity score by how human the request appears, and uses that score both to admit resources from a metadata-only ghost cache and to choose eviction victims through a randomized sampling tournament.
+
+DTAC was benchmarked against LRU, the scan-resistant SIEVE and S3-FIFO algorithms, and an ablation of itself that ignores the score, in 350 replays of synthetic traffic that mixed Zipf-distributed human browsing sessions with 10--75\% scraper traffic over five random seeds. Against scrapers with detectable signatures, the router separated bots from humans perfectly, and at a cache size of 10\% of the catalog DTAC's human hit rate stayed at 58.2--58.3\% regardless of the bot share. At 75\% bot traffic it exceeded LRU by 17.1 percentage points, SIEVE by 3.9, S3-FIFO by 5.1 and its own ablation by 4.3, admitted no bot-only content, and added about 23--39 microseconds of scoring time at the 99th percentile. Against stealthy scrapers that imitate browsers, the heuristics performed no better than chance and DTAC matched its ablation, still outperforming LRU and S3-FIFO. At a cache size of 20\% of the catalog DTAC fell behind SIEVE. The results show that a bot-probability score can substantially protect human cache performance in a single shared cache, and that its value depends on how well the score identifies the bots.
 
 % UI does not need keywords
 % \vspace{1cm}
