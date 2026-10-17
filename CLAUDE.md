@@ -21,6 +21,7 @@ All build outputs (`*.aux`, `*.bbl`, `*.log`, `*.pdf`, etc.) are gitignored. Che
 
 - `main.tex` holds the preamble, all formatting rules, and all front matter inline (title page, certification, dedication, acknowledgement, abbreviations, ToC/LoF, abstract), then `\include`s chapters from `chapters/`.
 - All chapters are active: 04 (results), 05 (discussion, conclusion and recommendations, incl. limitations and future work) and `appendix_a` (configuration, calibration sweeps, supplementary tables, reproduction commands).
+- `README.md` is an informal, structured summary of the project (problem, design, method, headline results, caveats). Keep its numbers in sync with Ch. 4 if results change.
 - `references.bib` is a single BibTeX database. Keys follow `author_firstword_year` (e.g. `zhang_rethinking_2026`), which looks Zotero/Better BibTeX-generated.
 - The Ch. 3 methodology and architecture figures are inline TikZ (libraries loaded in the preamble). `figures/` holds image assets referenced as `figures/<Name>.png` (the UI logo; `Methodology.png` and `Architecture_Diagram.png` are the superseded originals and are no longer referenced).
 
