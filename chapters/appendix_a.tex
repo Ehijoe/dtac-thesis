@@ -1,4 +1,227 @@
-\chapter{Sample Appendix}
+\chapter{Calibration and Supplementary Results}
 \label{chap:appendix_a}
 
-Important and original computer programs, data that cannot be represented directly in results, etc.
+This appendix gives the full configuration used for every reported run, the main calibration sweeps performed on the tuning seed (seed 0), supplementary result tables that were summarized in Chapter~\ref{chap:results}, and the commands needed to reproduce the experiments with the implementation.
+
+\section{Configuration Used for All Reported Runs}
+
+\begin{table}[htbp]
+    \centering
+    \caption{Heuristic router configuration (\texttt{RouterConfig})}
+    \label{tab:app-router-config}
+    \small
+    \begin{tabular}{llp{0.42\textwidth}}
+        \toprule
+        Field & Value & Meaning \\
+        \midrule
+        \texttt{prior\_bot\_rate} & 0.02 & Assumed bot base rate $p_0$; $L_0 = \ln(p_0/(1-p_0)) \approx -3.89$ \\
+        \texttt{w\_asn} & 3.0 & Weight of the datacenter-ASN heuristic \\
+        \texttt{w\_fav} & 2.0 & Weight of the ``Shy Guys'' heuristic \\
+        \texttt{w\_hdr} & 4.0 & Weight of the missing \texttt{Accept-Language} heuristic \\
+        \texttt{alpha} & 2.0 & Velocity penalty scale $\alpha$ \\
+        \texttt{burst\_threshold} & 3.0 & Velocity threshold $v_{\tau}$ \\
+        \texttt{velocity\_tick\_ms} & 5000 & Velocity counter halving interval \\
+        \texttt{velocity\_reset\_ticks} & 10 & Idle ticks after which velocity resets \\
+        \texttt{shy\_page\_threshold} & 12 & Pages without any asset before ``Shy Guys'' fires \\
+        \texttt{space\_saver\_half\_life\_s} & 3600 & Half-life of the per-IP Space-Saving counts \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\begin{table}[htbp]
+    \centering
+    \caption{Cache engine configuration (\texttt{EngineConfig})}
+    \label{tab:app-engine-config}
+    \small
+    \begin{tabular}{llp{0.42\textwidth}}
+        \toprule
+        Field & Value & Meaning \\
+        \midrule
+        \texttt{decay\_half\_life\_ms} & 14{,}400{,}000 & Score half-life $h$ (4 hours) \\
+        \texttt{decay\_cutoff\_half\_lives} & 32 & Half-lives after which a score is zero \\
+        \texttt{promotion\_threshold} & 1.5 & Ghost score required for admission \\
+        \texttt{n\_samples} & 8 & Eviction tournament sample size $N$ \\
+        \texttt{ghost\_multiplier} & 8 & Ghost capacity as a multiple of main capacity \\
+        \texttt{shards} & auto & Largest power of two $\leq 256$ leaving $\geq 64$ entries per shard \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\section{Calibration Sweeps}
+The calibration procedure is described in Section 3.4.3. All values below were measured on seed 0, on the naive workload at a capacity of 10{,}000 entries, averaged over the 30\% and 75\% bot ratios.
+
+Table~\ref{tab:app-llr} lists, for each heuristic, how often it fired on each class on the tuning seed and the resulting empirical log-likelihood ratio $\ln(P(\text{fired} \mid \text{bot}) / P(\text{fired} \mid \text{human}))$ (with a +0.5 correction for zero counts), next to the calibrated weight. These ratios are \emph{circular}: the generator was written to trigger these heuristics, so they restate how the synthetic bots were built rather than validating the weights.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Share of human and bot requests on which each heuristic fired, empirical log-likelihood ratio and calibrated weight, tuning seed, 75\% bots}
+    \label{tab:app-llr}
+    \small
+    \begin{tabular}{lcccc}
+        \toprule
+        Heuristic & Humans & Bots & Empirical LLR & Weight \\
+        \midrule
+        Velocity & 4.25\% & 99.99\% & +3.16 & $\alpha = 2$ \\
+        Datacenter ASN & 0.00\% & 63.64\% & +11.76 & $W_{asn} = 3$ \\
+        ``Shy Guys'' & 2.27\% & 99.96\% & +3.78 & $W_{fav} = 2$ \\
+        Missing \texttt{Accept-Language} & 0.00\% & 100.00\% & +12.21 & $W_{hdr} = 4$ \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\begin{table}[htbp]
+    \centering
+    \caption{Engine sweeps with the router fixed: mean human hit rate (\%) and resident main-cache entries}
+    \label{tab:app-engine-sweeps}
+    \small
+    \begin{tabular}{lcc@{\hspace{2em}}lcc}
+        \toprule
+        Half-life $h$ & Human HR & Entries & Promotion threshold & Human HR & Entries \\
+        \midrule
+        1 s & 26.20 & 130 & 0.5 & 58.00 & 9{,}984 \\
+        10 s & 33.96 & 622 & 1.0 & 58.32 & 9{,}984 \\
+        1 min & 41.56 & 1{,}803 & \textbf{1.5} & \textbf{58.32} & 9{,}984 \\
+        5 min & 49.44 & 4{,}730 & 2.0 & 54.69 & 9{,}102 \\
+        30 min & 57.14 & 9{,}970 & 3.0 & 50.45 & 5{,}640 \\
+        1 h & 58.17 & 9{,}984 & & & \\
+        \textbf{4 h} & \textbf{58.32} & 9{,}984 & & & \\
+        \midrule
+        Sample size $N$ & Human HR & & Ghost multiplier & Human HR & \\
+        \midrule
+        3 & 57.91 & & 1 & 56.77 & \\
+        5 & 58.24 & & 2 & 58.30 & \\
+        \textbf{8} & \textbf{58.38} & & 4 & 58.32 & \\
+        14 & 58.35 & & \textbf{8} & \textbf{58.38} & \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+Table~\ref{tab:app-engine-sweeps} shows the second coarse pass of the engine sweeps (chosen values in bold). With a one-second half-life the main cache held only 130 of its 9{,}984 slots, because scores decayed between the page views of a session before items could be promoted. A threshold of 1.0 tied with 1.5 within the tolerance, so the value closer to the original was kept.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Check of the capacity-sensitive engine parameters at other capacities (mean human hit rate, \%)}
+    \label{tab:app-capacity-check}
+    \small
+    \begin{tabular}{llccl}
+        \toprule
+        Capacity & Parameter & Calibrated value & Best at this capacity & Best value \\
+        \midrule
+        1{,}000 & Half-life & 39.28 & 39.60 & 1 min \\
+        1{,}000 & Promotion threshold & 39.28 & 40.19 & 3 \\
+        5{,}000 & Half-life & 51.91 & 52.12 & 1 h \\
+        5{,}000 & Promotion threshold & 51.91 & 52.29 & 2 \\
+        20{,}000 & Half-life & 61.62 & 61.62 & 4 h \\
+        20{,}000 & Promotion threshold & 61.62 & 63.89 & 0.5 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+Table~\ref{tab:app-capacity-check} shows that the calibrated values were within one point of the best value at every other capacity except for the promotion threshold at 20{,}000 entries, where admitting on the first human request (0.5) was 2.3 points better. The constants were deliberately not re-tuned per capacity.
+
+\section{Supplementary Results}
+
+\begin{table}[htbp]
+    \centering
+    \caption{Paired difference in overall hit rate, DTAC $-$ X (percentage points), capacity 10{,}000. Bold: 95\% CI excludes zero}
+    \label{tab:app-paired-overall}
+    \small
+    \begin{tabular}{llcccc}
+        \toprule
+        Workload & Bot ratio & vs DTAC (no score) & vs LRU & vs SIEVE & vs S3-FIFO \\
+        \midrule
+        Naive & 10\% & \textbf{+0.28} $\pm$ 0.03 & \textbf{+5.48} $\pm$ 0.11 & \textbf{+1.00} $\pm$ 0.11 & \textbf{+0.80} $\pm$ 0.12 \\
+         & 30\% & \textbf{+0.73} $\pm$ 0.10 & \textbf{+6.00} $\pm$ 0.15 & \textbf{+1.15} $\pm$ 0.07 & \textbf{+1.00} $\pm$ 0.10 \\
+         & 50\% & \textbf{+0.96} $\pm$ 0.07 & \textbf{+5.61} $\pm$ 0.08 & \textbf{+1.09} $\pm$ 0.06 & \textbf{+1.06} $\pm$ 0.05 \\
+         & 75\% & \textbf{+0.66} $\pm$ 0.06 & \textbf{+3.74} $\pm$ 0.09 & \textbf{+0.47} $\pm$ 0.10 & \textbf{+0.76} $\pm$ 0.05 \\
+        \midrule
+        Stealthy & 10\% & \textbf{$-$0.08} $\pm$ 0.05 & \textbf{+5.01} $\pm$ 0.11 & \textbf{+0.62} $\pm$ 0.11 & \textbf{+0.46} $\pm$ 0.08 \\
+         & 30\% & +0.02 $\pm$ 0.06 & \textbf{+5.00} $\pm$ 0.11 & \textbf{+0.47} $\pm$ 0.05 & \textbf{+0.37} $\pm$ 0.08 \\
+         & 50\% & +0.02 $\pm$ 0.07 & \textbf{+4.42} $\pm$ 0.11 & \textbf{+0.19} $\pm$ 0.05 & \textbf{+0.11} $\pm$ 0.08 \\
+         & 75\% & +0.00 $\pm$ 0.02 & \textbf{+2.94} $\pm$ 0.10 & \textbf{$-$0.15} $\pm$ 0.09 & \textbf{+0.05} $\pm$ 0.03 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\begin{table}[htbp]
+    \centering
+    \caption{Secondary metrics (\%), stealthy workload, capacity 10{,}000}
+    \label{tab:app-secondary-stealthy}
+    \small
+    \begin{tabular}{llccccc}
+        \toprule
+        Metric & Bot ratio & DTAC & DTAC (no score) & LRU & SIEVE & S3-FIFO \\
+        \midrule
+        Overall hit rate & 10\% & 54.93 & 55.01 & 49.92 & 54.31 & 54.47 \\
+         & 30\% & 48.48 & 48.46 & 43.48 & 48.01 & 48.12 \\
+         & 50\% & 42.05 & 42.04 & 37.63 & 41.86 & 41.94 \\
+         & 75\% & 34.56 & 34.56 & 31.62 & 34.71 & 34.51 \\
+        \midrule
+        Human byte hit rate & 10\% & 52.73 & 52.82 & 46.33 & 51.86 & 52.03 \\
+         & 30\% & 52.11 & 52.01 & 43.67 & 51.17 & 51.30 \\
+         & 50\% & 50.79 & 50.78 & 40.44 & 50.16 & 50.22 \\
+         & 75\% & 48.86 & 48.75 & 34.86 & 48.83 & 48.04 \\
+        \midrule
+        Bot hit rate & 10\% & 27.47 & 27.59 & 27.98 & 28.03 & 27.97 \\
+        (reference only) & 30\% & 27.74 & 27.74 & 28.14 & 28.08 & 28.02 \\
+         & 50\% & 27.73 & 27.72 & 27.97 & 27.98 & 28.03 \\
+         & 75\% & 27.92 & 27.93 & 28.05 & 28.08 & 28.05 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\begin{table}[htbp]
+    \centering
+    \caption{Bot-triggered share (\%): resident entries whose admission was triggered by a bot request, capacity 10{,}000}
+    \label{tab:app-bot-share}
+    \small
+    \begin{tabular}{llccccc}
+        \toprule
+        Workload & Bot ratio & DTAC & DTAC (no score) & LRU & SIEVE & S3-FIFO \\
+        \midrule
+        Naive & 10\% & 0.0 & 7.7 & 15.0 & 8.9 & 9.9 \\
+         & 30\% & 0.0 & 22.7 & 39.4 & 23.4 & 26.7 \\
+         & 50\% & 0.0 & 37.7 & 59.4 & 35.2 & 42.0 \\
+         & 75\% & 0.0 & 56.7 & 80.5 & 47.1 & 62.6 \\
+        \midrule
+        Stealthy & 10\% & 6.1 & 6.1 & 12.2 & 7.2 & 8.0 \\
+         & 30\% & 19.1 & 19.2 & 34.1 & 20.3 & 23.1 \\
+         & 50\% & 33.0 & 33.1 & 53.9 & 31.8 & 37.4 \\
+         & 75\% & 52.7 & 52.8 & 76.6 & 44.9 & 58.1 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+Table~\ref{tab:app-bot-share} reports the simpler pollution measure, recorded alongside the CPI (Section 3.7.2). It is consistently higher than the CPI because it also counts entries that a bot happened to admit but that humans went on to use.
+
+\section{Reproducing the Experiments}
+The experiments can be reproduced from the implementation repository with the commands below (run from its root, with a Rust toolchain and a Python 3 environment with \texttt{numpy} installed). The calibration takes about 25 minutes and the full grid about 25 minutes on the laptop described in Section 3.3.1.
+
+\begin{verbatim}
+# Build and test
+cargo build --release
+cargo test
+
+# Calibrate on seed 0 (writes results/tuning.md)
+python scripts/run_experiments.py tune
+
+# Run the 350-replay grid on seeds 1-5 and aggregate
+# (writes results/summary.md and results/summary.csv)
+python scripts/run_experiments.py
+
+# A single replay
+cargo run --release --bin replay_bench -- \
+    --file benchmark_logs/seed_1/traffic_mixed_30pct_bot.ndjson \
+    --capacity 10000 --algorithm dtac \
+    --asn-db data/asn/ip2asn-fixture.tsv
+
+# Networked validation run
+target/release/origin_stub --port 8081 &
+target/release/dtac_standalone --port 8080 --capacity 10000 \
+    --target http://127.0.0.1:8081 \
+    --trusted-proxy 127.0.0.1/32 --clock replay-header \
+    --debug-headers --asn-db data/asn/ip2asn-fixture.tsv &
+target/release/replay_bench \
+    --file benchmark_logs/seed_1/traffic_mixed_30pct_bot.ndjson \
+    --target-url http://127.0.0.1:8080
+\end{verbatim}

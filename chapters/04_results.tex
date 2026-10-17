@@ -211,7 +211,7 @@ With the router unable to identify the bots, DTAC and its ablation behaved ident
 
 DTAC still outperformed LRU at every ratio (by 5.62 to 12.11 points) and S3-FIFO by about 0.5--0.6 points, and it outperformed SIEVE at 10--50\% bots. At 75\% it tied with SIEVE ($-0.13 \pm 0.18$). Since the AI-score contributed nothing on this workload, these remaining advantages come from the engine's ghost-cache admission and long-memory tournament alone. For the overall hit rate, DTAC was slightly behind SIEVE at 75\% bots ($-0.15 \pm 0.09$ points).
 
-The bot hit rate on this workload was about 28\% for every algorithm (27.47--28.08\%), much higher than for naive bots, because each stealthy IP fetches the favicon, which is always cached, in addition to its uniformly scanned pages. The human byte hit rate again tracked the human hit rate (48.86\% for DTAC at 75\% bots, against 48.83\% for SIEVE and 34.86\% for LRU).
+The bot hit rate on this workload was about 28\% for every algorithm (27.47--28.08\%), much higher than for naive bots, because each stealthy IP fetches the favicon, which is always cached, in addition to its uniformly scanned pages. The human byte hit rate again tracked the human hit rate (48.86\% for DTAC at 75\% bots, against 48.83\% for SIEVE and 34.86\% for LRU); the full stealthy-workload secondary metrics are given in Appendix~\ref{chap:appendix_a}.
 
 \section{Effect of Cache Capacity}
 Table~\ref{tab:capacity} and Figure~\ref{fig:capacity} show the human hit rate on the naive workload at capacities from 1\% to 20\% of the catalog, at 30\% and 75\% bot traffic. The shard count was chosen automatically (8, 64, 128 and 256 shards respectively), and the constants calibrated at 10{,}000 entries were used at every capacity.

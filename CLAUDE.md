@@ -20,7 +20,7 @@ All build outputs (`*.aux`, `*.bbl`, `*.log`, `*.pdf`, etc.) are gitignored. Che
 ## Structure
 
 - `main.tex` holds the preamble, all formatting rules, and all front matter inline (title page, certification, dedication, acknowledgement, abbreviations, ToC/LoF, abstract), then `\include`s chapters from `chapters/`.
-- Chapters 04 (results) and 05 (discussion, conclusion and recommendations, incl. limitations and future work) are active. `appendix_a` is a placeholder and its `\include` line in `main.tex` is commented out; uncomment it when it gets content.
+- All chapters are active: 04 (results), 05 (discussion, conclusion and recommendations, incl. limitations and future work) and `appendix_a` (configuration, calibration sweeps, supplementary tables, reproduction commands).
 - `references.bib` is a single BibTeX database. Keys follow `author_firstword_year` (e.g. `zhang_rethinking_2026`), which looks Zotero/Better BibTeX-generated.
 - Figures live in `figures/` and are referenced as `figures/<Name>.png`.
 
