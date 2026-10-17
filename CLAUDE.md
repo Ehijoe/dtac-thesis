@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-A LaTeX B.Sc. thesis (University of Ibadan, Dept. of Computer Science): *Dynamic Traffic-Aware Web Caching: Implementing Heuristic Routing to Mitigate AI Scraper Interference*. The system described (DTAC, a heuristic proxy + modified-LRU cache written in Rust) is implemented elsewhere; this repo holds only the write-up.
+A LaTeX B.Sc. thesis (University of Ibadan, Dept. of Computer Science): *Dynamic Traffic-Aware Web Caching: Implementing Heuristic Routing to Mitigate AI Scraper Interference*. The system described (DTAC: a log-odds heuristic router feeding a bot score into a cache engine with ghost-cache admission, decayed per-resource scores and a sampled eviction tournament, written in Rust) is implemented in a separate repository; this repo holds the write-up plus copies of that repo's README and benchmark outputs.
 
 ## Build
 
@@ -23,6 +23,15 @@ All build outputs (`*.aux`, `*.bbl`, `*.log`, `*.pdf`, etc.) are gitignored. Che
 - Chapters 04 (results), 05 (discussion), and `appendix_a` are placeholders, and their `\include` lines in `main.tex` are commented out. Uncomment them when the chapters get content. `\listoftables` is also commented out until the first table exists.
 - `references.bib` is a single BibTeX database. Keys follow `author_firstword_year` (e.g. `zhang_rethinking_2026`), which looks Zotero/Better BibTeX-generated.
 - Figures live in `figures/` and are referenced as `figures/<Name>.png`.
+
+## Implementation sources
+
+The thesis text must agree with these copies from the implementation repo. They are the source of truth for every number and design detail in the write-up:
+
+- `Project_README.md`: the implementation's own README (architecture, generator, benchmark method, results, known limitations, and a "Thesis vs. implementation" table listing where the chapters used to disagree with the code).
+- `results/summary.md` / `results/summary.csv`: aggregated benchmark results over seeds 1–5 (mean ± 95% CI and paired differences). The CSV has a few metrics the markdown omits (e.g. `t_total_p99_us`, `bot_triggered_share`, overall BHR).
+- `results/tuning.md` / `results/tuning.json`: calibration of the router and engine constants on held-out seed 0.
+- `results/raw/` and `results/tuning_raw/` are per-run JSON files, gitignored. Ignore them.
 
 ## Conventions
 
