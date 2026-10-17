@@ -127,6 +127,8 @@ The Heuristic Proxy and the Dynamic Traffic-Aware Cache (DTAC) were developed en
 
 The cache engine is built from the standard library's \texttt{HashMap} and \texttt{Vec} types: each lock shard keeps a hash map from resource key to an index into a dense vector of entries, so that a uniformly random entry can be sampled and removed in constant time (by swapping it with the last element). The State Manager's bounded per-IP table uses a \texttt{HashMap} paired with ordered \texttt{BTreeSet} indices. The asynchronous runtime \texttt{tokio} handles concurrent request processing; the standalone reverse proxy is built on the \texttt{axum} web framework and forwards misses with the \texttt{reqwest} HTTP client. Latencies are recorded into \texttt{hdrhistogram} histograms, and operational metrics are exported through OpenTelemetry to a Prometheus endpoint.
 
+The complete source code of the system, the workload generator, the benchmark tools and the experiment harness is publicly available at \url{https://github.com/Ehijoe/dtac}.
+
 \subsection{Simulation and Log Replay Tools}
 Because testing against a live production server introduces unpredictable variables, the workloads were completely simulated. Dedicated tools were developed for data generation, log replay and experiment orchestration:
 

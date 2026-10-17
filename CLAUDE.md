@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-A LaTeX B.Sc. thesis (University of Ibadan, Dept. of Computer Science): *Dynamic Traffic-Aware Web Caching: Implementing Heuristic Routing to Mitigate AI Scraper Interference*. The system described (DTAC: a log-odds heuristic router feeding a bot score into a cache engine with ghost-cache admission, decayed per-resource scores and a sampled eviction tournament, written in Rust) is implemented in a separate repository; this repo holds the write-up plus copies of that repo's README and benchmark outputs.
+A LaTeX B.Sc. thesis (University of Ibadan, Dept. of Computer Science): *Dynamic Traffic-Aware Web Caching: Implementing Heuristic Routing to Mitigate AI Scraper Interference*. The system described (DTAC: a log-odds heuristic router feeding a bot score into a cache engine with ghost-cache admission, decayed per-resource scores and a sampled eviction tournament, written in Rust) is implemented in a separate repository (https://github.com/Ehijoe/dtac, cited in Ch. 3 §3.3.2 and Appendix A); this repo holds the write-up plus copies of that repo's README and benchmark outputs.
 
 ## Build
 

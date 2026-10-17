@@ -195,9 +195,13 @@ Table~\ref{tab:app-capacity-check} shows that the calibrated values were within 
 Table~\ref{tab:app-bot-share} reports the simpler pollution measure, recorded alongside the CPI (Section 3.7.2). It is consistently higher than the CPI because it also counts entries that a bot happened to admit but that humans went on to use.
 
 \section{Reproducing the Experiments}
-The experiments can be reproduced from the implementation repository with the commands below (run from its root, with a Rust toolchain and a Python 3 environment with \texttt{numpy} installed). The calibration takes about 25 minutes and the full grid about 25 minutes on the laptop described in Section 3.3.1.
+The experiments can be reproduced from the implementation repository, \url{https://github.com/Ehijoe/dtac}, with the commands below (run from its root, with a Rust toolchain and a Python 3 environment with \texttt{numpy} installed). The calibration takes about 25 minutes and the full grid about 25 minutes on the laptop described in Section 3.3.1.
 
 \begin{verbatim}
+# Get the code
+git clone https://github.com/Ehijoe/dtac.git
+cd dtac
+
 # Build and test
 cargo build --release
 cargo test
