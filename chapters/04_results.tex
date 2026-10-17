@@ -1,4 +1,394 @@
 \chapter{Results}
 \label{chap:results}
 
-The research findings are presented in this section which may feature tables, figures, plates and other illustrations.
+\section{Introduction}
+This chapter presents the results of the experiments described in Chapter~\ref{chap:methodology}. Section 4.2 summarizes the experimental configuration. Section 4.3 evaluates the Heuristic Proxy on its own, as a classifier of human and bot traffic, because every effect of the AI-score on the cache depends on how well the two classes are separated. Sections 4.4 to 4.6 then report the primary metric, the human cache hit rate, together with the secondary hit-rate metrics, first for the naive scraper workload and then for the stealthy workload. Section 4.7 reports how the results change with cache capacity, Section 4.8 reports the Cache Pollution Index, and Section 4.9 the latency and memory overhead. Section 4.10 presents the networked validation run, and Section 4.11 summarizes the findings.
+
+Unless stated otherwise, every value is the mean over the five evaluation seeds (1--5) followed by the half-width of its 95\% confidence interval ($t$-distribution, $n = 5$). Hit rates are given in percent and differences between algorithms in percentage points. Throughout the chapter the five algorithms are labelled DTAC, DTAC (no score) for the ablation in which every request receives the score of a clean human request, LRU, SIEVE and S3-FIFO.
+
+\section{Experimental Configuration}
+All runs used the calibrated constants of Table~\ref{tab:calibration}, the log-driven clock, and the ASN fixture described in Section 3.5.2. Table~\ref{tab:grid} summarizes the experiment grid. Each evaluation log contained about 50{,}000 warm-up requests, excluded from all metrics, followed by about 100{,}000 human measurement requests and the number of bot requests implied by its bot ratio (from about 11{,}000 at 10\% to about 300{,}000 at 75\%). With a capacity of 10{,}000 entries the cache was split into 128 shards, so every algorithm held exactly 9{,}984 entries (78 per shard) in its main cache.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Experiment grid}
+    \label{tab:grid}
+    \begin{tabular}{ll}
+        \toprule
+        Factor & Levels \\
+        \midrule
+        Evaluation seeds & 1, 2, 3, 4, 5 (seed 0 used only for calibration) \\
+        Bot workload & naive, stealthy \\
+        Bot ratio & 10\%, 30\%, 50\%, 75\% \\
+        Algorithm & DTAC, DTAC (no score), LRU, SIEVE, S3-FIFO \\
+        Cache capacity & 10{,}000 entries (primary); \\
+         & 1{,}000, 5{,}000, 20{,}000 (naive workload, 30\% and 75\% only) \\
+        Catalog & 100{,}000 objects, Zipf $\alpha = 0.8$ \\
+        Total replays & 350 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\section{Router Classification Quality}
+Table~\ref{tab:router} reports the quality of the AI-score as a classifier against the ground-truth labels. Because the router does not depend on the cache algorithm or the capacity, the figures are taken from the DTAC runs at a capacity of 10{,}000 entries.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Router classification quality. FPR (human false-positive rate) and recall are in \% at a decision threshold of 0.5}
+    \label{tab:router}
+    \small
+    \setlength{\tabcolsep}{4pt}
+    \begin{tabular}{llccccc}
+        \toprule
+        Workload & Bot ratio & ROC-AUC & Class-mean gap & FPR new & FPR returning & Recall \\
+        \midrule
+        Naive & 10\% & 1.000 & 0.976 & 0.00 & 0.00 & 100.00 \\
+        Naive & 30\% & 1.000 & 0.975 & 0.00 & 0.00 & 100.00 \\
+        Naive & 50\% & 1.000 & 0.976 & 0.00 & 0.00 & 100.00 \\
+        Naive & 75\% & 1.000 & 0.976 & 0.00 & 0.00 & 100.00 \\
+        \midrule
+        Stealthy & 10\% & 0.485 & $-0.003$ & 0.00 & 0.00 & 0.00 \\
+        Stealthy & 30\% & 0.485 & $-0.003$ & 0.00 & 0.00 & 0.00 \\
+        Stealthy & 50\% & 0.485 & $-0.003$ & 0.00 & 0.00 & 0.00 \\
+        Stealthy & 75\% & 0.485 & $-0.003$ & 0.00 & 0.00 & 0.00 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+On the naive workload the router separated the two classes perfectly at every bot ratio: the ROC-AUC was 1.000, every bot request scored above 0.5 and no human request did. The class-mean gap of 0.976 means that a human request contributed on average about 0.98 to a resource's score while a bot request contributed about 0.002, so the cache treated the two classes almost as differently as it possibly could. The confidence intervals of all these values were below 0.001.
+
+Human traffic was not entirely free of penalties. On the tuning seed, the velocity heuristic fired on about 4.2\% of human requests (fast multi-page sessions) and the ``Shy Guys'' heuristic on about 2.3\% (returning visitors who had viewed 12 or more pages without fetching the favicon). As a result, returning visitors scored a mean bot probability of 0.030 against 0.021 for new visitors. Neither penalty was large enough on its own to push a human above 0.5, so the false-positive rate at that threshold was zero for both groups.
+
+On the stealthy workload the router failed completely. The ROC-AUC of 0.485 is slightly \emph{worse} than chance: stealthy bots scored a mean bot probability of about 0.021 against 0.023 for humans, because they send browser headers, use non-datacenter addresses, send too few requests per IP to trigger the velocity heuristic, and fetch the favicon. No stealthy bot request was flagged at 0.5. The router therefore gave the cache no useful information about these bots.
+
+\section{Human Cache Hit Rate under Naive Scrapers}
+Table~\ref{tab:hhr-naive} and Figure~\ref{fig:hhr-naive} show the primary metric for the naive workload at a capacity of 10{,}000 entries.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Human cache hit rate (\%), naive workload, capacity 10{,}000}
+    \label{tab:hhr-naive}
+    \small
+    \begin{tabular}{lccccc}
+        \toprule
+        Bot ratio & DTAC & DTAC (no score) & LRU & SIEVE & S3-FIFO \\
+        \midrule
+        10\% & \textbf{58.29} $\pm$ 0.13 & 57.95 $\pm$ 0.13 & 52.08 $\pm$ 0.16 & 57.09 $\pm$ 0.09 & 57.32 $\pm$ 0.21 \\
+        30\% & \textbf{58.27} $\pm$ 0.12 & 57.12 $\pm$ 0.19 & 49.37 $\pm$ 0.26 & 56.30 $\pm$ 0.08 & 56.53 $\pm$ 0.18 \\
+        50\% & \textbf{58.25} $\pm$ 0.14 & 55.92 $\pm$ 0.13 & 46.35 $\pm$ 0.19 & 55.41 $\pm$ 0.17 & 55.50 $\pm$ 0.13 \\
+        75\% & \textbf{58.22} $\pm$ 0.09 & 53.89 $\pm$ 0.19 & 41.12 $\pm$ 0.26 & 54.32 $\pm$ 0.16 & 53.09 $\pm$ 0.15 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\begin{figure}[htbp]
+    \centering
+    \begin{tikzpicture}
+        \begin{axis}[resultaxis, xlabel={Bot traffic (\%)}, ylabel={Human hit rate (\%)}, ymin=40, ymax=60]
+            \addplot[algdtac] coordinates {(10,58.29) (30,58.27) (50,58.25) (75,58.22)};
+            \addplot[algnoscore] coordinates {(10,57.95) (30,57.12) (50,55.92) (75,53.89)};
+            \addplot[alglru] coordinates {(10,52.08) (30,49.37) (50,46.35) (75,41.12)};
+            \addplot[algsieve] coordinates {(10,57.09) (30,56.30) (50,55.41) (75,54.32)};
+            \addplot[algsfifo] coordinates {(10,57.32) (30,56.53) (50,55.50) (75,53.09)};
+            \legend{DTAC, DTAC (no score), LRU, SIEVE, S3-FIFO}
+        \end{axis}
+    \end{tikzpicture}
+    \caption{Human hit rate against bot traffic share, naive workload, capacity 10{,}000}
+    \label{fig:hhr-naive}
+\end{figure}
+
+DTAC's human hit rate was essentially unaffected by the volume of naive bot traffic: it fell by only 0.07 percentage points, from 58.29\% at 10\% bots to 58.22\% at 75\%, which is within the confidence intervals. Every other algorithm degraded as the bot share grew. LRU lost 10.96 points (from 52.08\% to 41.12\%), S3-FIFO 4.23 points, the DTAC ablation 4.06 points and SIEVE 2.77 points. DTAC had the highest human hit rate at every ratio.
+
+Table~\ref{tab:paired-naive} gives the paired per-seed differences between DTAC and each alternative. Every difference was positive and every confidence interval excluded zero.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Paired difference in human hit rate, DTAC $-$ X (percentage points), naive workload, capacity 10{,}000. Bold: 95\% CI excludes zero}
+    \label{tab:paired-naive}
+    \small
+    \begin{tabular}{lcccc}
+        \toprule
+        Bot ratio & vs DTAC (no score) & vs LRU & vs SIEVE & vs S3-FIFO \\
+        \midrule
+        10\% & \textbf{+0.33} $\pm$ 0.04 & \textbf{+6.21} $\pm$ 0.10 & \textbf{+1.19} $\pm$ 0.11 & \textbf{+0.97} $\pm$ 0.14 \\
+        30\% & \textbf{+1.15} $\pm$ 0.13 & \textbf{+8.90} $\pm$ 0.15 & \textbf{+1.97} $\pm$ 0.06 & \textbf{+1.74} $\pm$ 0.09 \\
+        50\% & \textbf{+2.33} $\pm$ 0.08 & \textbf{+11.90} $\pm$ 0.12 & \textbf{+2.84} $\pm$ 0.15 & \textbf{+2.75} $\pm$ 0.05 \\
+        75\% & \textbf{+4.33} $\pm$ 0.21 & \textbf{+17.10} $\pm$ 0.22 & \textbf{+3.90} $\pm$ 0.15 & \textbf{+5.13} $\pm$ 0.14 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+Two observations follow from these tables. First, the advantage over every alternative grew with the bot share: over LRU from 6.21 to 17.10 points, over SIEVE from 1.19 to 3.90 and over S3-FIFO from 0.97 to 5.13. Second, the comparison with the ablation isolates the contribution of the AI-score, since the two configurations share the same engine and differ only in whether bots can be told apart. That contribution also grew with the bot share, from 0.33 points at 10\% to 4.33 points at 75\%. The ablation on its own was already competitive with the scan-resistant baselines: it was ahead of both SIEVE and S3-FIFO at 10--50\% bots and between them at 75\% (53.89\% against 54.32\% and 53.09\%). Most of DTAC's margin over SIEVE and S3-FIFO is therefore attributable to the AI-score rather than to the ghost cache and the decayed-score tournament alone.
+
+\section{Secondary Metrics under Naive Scrapers}
+Table~\ref{tab:secondary-naive} reports the overall hit rate (over human and bot requests together), the human byte hit rate and, for reference only, the bot hit rate.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Secondary metrics (\%), naive workload, capacity 10{,}000}
+    \label{tab:secondary-naive}
+    \small
+    \begin{tabular}{llccccc}
+        \toprule
+        Metric & Bot ratio & DTAC & DTAC (no score) & LRU & SIEVE & S3-FIFO \\
+        \midrule
+        Overall hit rate & 10\% & 53.31 & 53.03 & 47.84 & 52.31 & 52.52 \\
+         & 30\% & 43.49 & 42.76 & 37.48 & 42.34 & 42.48 \\
+         & 50\% & 33.71 & 32.74 & 28.10 & 32.62 & 32.65 \\
+         & 75\% & 21.47 & 20.81 & 17.73 & 21.00 & 20.71 \\
+        \midrule
+        Human byte hit rate & 10\% & 53.11 & 52.67 & 46.04 & 51.73 & 51.95 \\
+         & 30\% & 53.08 & 51.68 & 42.96 & 50.78 & 50.99 \\
+         & 50\% & 53.05 & 50.51 & 39.43 & 49.77 & 49.88 \\
+         & 75\% & 53.07 & 48.12 & 33.54 & 48.56 & 47.20 \\
+        \midrule
+        Bot hit rate & 10\% & 9.12 & 9.27 & 10.12 & 9.86 & 9.83 \\
+        (reference only) & 30\% & 9.20 & 9.47 & 9.93 & 9.95 & 9.92 \\
+         & 50\% & 9.29 & 9.69 & 9.95 & 9.95 & 9.92 \\
+         & 75\% & 9.28 & 9.83 & 9.97 & 9.95 & 9.97 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+The overall hit rate necessarily falls for every algorithm as the bot share grows, because bot requests are mostly for objects that are not cached. DTAC nevertheless had the highest overall hit rate at every ratio; the paired differences against every alternative were positive with confidence intervals excluding zero (for example $+0.47 \pm 0.10$ points over SIEVE and $+3.74 \pm 0.09$ over LRU at 75\% bots). This is despite DTAC serving bots slightly less often (a bot hit rate of about 9.2\% against about 10\% for the baselines), because humans account for most cache hits.
+
+The human byte hit rate followed the human hit rate closely. DTAC's human byte hit rate stayed between 53.05\% and 53.11\% at every ratio, while LRU's fell from 46.04\% to 33.54\%. The confidence intervals for this metric were between 0.17 and 0.69 points. As noted in Section 3.7.1, none of the algorithms is size-aware, so this metric reflects how hits on popular objects correlate with their size rather than any deliberate byte-level optimization.
+
+\section{Results under Stealthy Scrapers}
+Table~\ref{tab:hhr-stealthy} and Figure~\ref{fig:hhr-stealthy} show the human hit rate for the stealthy workload, against which the router performed no better than chance (Section 4.3).
+
+\begin{table}[htbp]
+    \centering
+    \caption{Human cache hit rate (\%), stealthy workload, capacity 10{,}000}
+    \label{tab:hhr-stealthy}
+    \small
+    \begin{tabular}{lccccc}
+        \toprule
+        Bot ratio & DTAC & DTAC (no score) & LRU & SIEVE & S3-FIFO \\
+        \midrule
+        10\% & 57.96 $\pm$ 0.15 & 58.04 $\pm$ 0.16 & 52.34 $\pm$ 0.21 & 57.21 $\pm$ 0.14 & 57.40 $\pm$ 0.21 \\
+        30\% & 57.34 $\pm$ 0.09 & 57.31 $\pm$ 0.16 & 50.03 $\pm$ 0.22 & 56.52 $\pm$ 0.06 & 56.70 $\pm$ 0.14 \\
+        50\% & 56.34 $\pm$ 0.10 & 56.32 $\pm$ 0.13 & 47.27 $\pm$ 0.23 & 55.71 $\pm$ 0.10 & 55.82 $\pm$ 0.17 \\
+        75\% & 54.40 $\pm$ 0.11 & 54.36 $\pm$ 0.09 & 42.29 $\pm$ 0.27 & 54.53 $\pm$ 0.22 & 53.81 $\pm$ 0.12 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\begin{figure}[htbp]
+    \centering
+    \begin{tikzpicture}
+        \begin{axis}[resultaxis, xlabel={Bot traffic (\%)}, ylabel={Human hit rate (\%)}, ymin=40, ymax=60]
+            \addplot[algdtac] coordinates {(10,57.96) (30,57.34) (50,56.34) (75,54.40)};
+            \addplot[algnoscore] coordinates {(10,58.04) (30,57.31) (50,56.32) (75,54.36)};
+            \addplot[alglru] coordinates {(10,52.34) (30,50.03) (50,47.27) (75,42.29)};
+            \addplot[algsieve] coordinates {(10,57.21) (30,56.52) (50,55.71) (75,54.53)};
+            \addplot[algsfifo] coordinates {(10,57.40) (30,56.70) (50,55.82) (75,53.81)};
+            \legend{DTAC, DTAC (no score), LRU, SIEVE, S3-FIFO}
+        \end{axis}
+    \end{tikzpicture}
+    \caption{Human hit rate against bot traffic share, stealthy workload, capacity 10{,}000}
+    \label{fig:hhr-stealthy}
+\end{figure}
+
+\begin{table}[htbp]
+    \centering
+    \caption{Paired difference in human hit rate, DTAC $-$ X (percentage points), stealthy workload, capacity 10{,}000. Bold: 95\% CI excludes zero}
+    \label{tab:paired-stealthy}
+    \small
+    \begin{tabular}{lcccc}
+        \toprule
+        Bot ratio & vs DTAC (no score) & vs LRU & vs SIEVE & vs S3-FIFO \\
+        \midrule
+        10\% & \textbf{$-$0.08} $\pm$ 0.05 & \textbf{+5.62} $\pm$ 0.11 & \textbf{+0.75} $\pm$ 0.14 & \textbf{+0.56} $\pm$ 0.08 \\
+        30\% & +0.03 $\pm$ 0.09 & \textbf{+7.31} $\pm$ 0.14 & \textbf{+0.82} $\pm$ 0.05 & \textbf{+0.64} $\pm$ 0.09 \\
+        50\% & +0.02 $\pm$ 0.05 & \textbf{+9.07} $\pm$ 0.16 & \textbf{+0.64} $\pm$ 0.14 & \textbf{+0.52} $\pm$ 0.15 \\
+        75\% & +0.04 $\pm$ 0.11 & \textbf{+12.11} $\pm$ 0.23 & $-$0.13 $\pm$ 0.18 & \textbf{+0.59} $\pm$ 0.18 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+With the router unable to identify the bots, DTAC and its ablation behaved identically within measurement error (Table~\ref{tab:paired-stealthy}): the differences at 30--75\% were statistically indistinguishable from zero, and at 10\% the ablation was very slightly ahead ($-0.08 \pm 0.05$ points). DTAC's human hit rate was no longer stable, falling by 3.56 points from 57.96\% to 54.40\% as the bot share rose, a decline comparable to SIEVE's (2.68 points) and S3-FIFO's (3.59 points).
+
+DTAC still outperformed LRU at every ratio (by 5.62 to 12.11 points) and S3-FIFO by about 0.5--0.6 points, and it outperformed SIEVE at 10--50\% bots. At 75\% it tied with SIEVE ($-0.13 \pm 0.18$). Since the AI-score contributed nothing on this workload, these remaining advantages come from the engine's ghost-cache admission and long-memory tournament alone. For the overall hit rate, DTAC was slightly behind SIEVE at 75\% bots ($-0.15 \pm 0.09$ points).
+
+The bot hit rate on this workload was about 28\% for every algorithm (27.47--28.08\%), much higher than for naive bots, because each stealthy IP fetches the favicon, which is always cached, in addition to its uniformly scanned pages. The human byte hit rate again tracked the human hit rate (48.86\% for DTAC at 75\% bots, against 48.83\% for SIEVE and 34.86\% for LRU).
+
+\section{Effect of Cache Capacity}
+Table~\ref{tab:capacity} and Figure~\ref{fig:capacity} show the human hit rate on the naive workload at capacities from 1\% to 20\% of the catalog, at 30\% and 75\% bot traffic. The shard count was chosen automatically (8, 64, 128 and 256 shards respectively), and the constants calibrated at 10{,}000 entries were used at every capacity.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Human cache hit rate (\%) against cache capacity, naive workload}
+    \label{tab:capacity}
+    \small
+    \begin{tabular}{llccccc}
+        \toprule
+        Bot ratio & Capacity & DTAC & DTAC (no score) & LRU & SIEVE & S3-FIFO \\
+        \midrule
+        30\% & 1{,}000 & 39.41 & 39.17 & 27.61 & 38.27 & \textbf{39.48} \\
+         & 5{,}000 & \textbf{51.95} & 50.91 & 40.92 & 49.89 & 50.74 \\
+         & 10{,}000 & \textbf{58.27} & 57.12 & 49.37 & 56.30 & 56.53 \\
+         & 20{,}000 & 61.50 & 62.56 & 60.50 & \textbf{64.48} & 63.74 \\
+        \midrule
+        75\% & 1{,}000 & \textbf{39.38} & 37.62 & 22.07 & 37.71 & 37.75 \\
+         & 5{,}000 & \textbf{51.85} & 48.43 & 33.26 & 48.36 & 47.61 \\
+         & 10{,}000 & \textbf{58.22} & 53.89 & 41.12 & 54.32 & 53.09 \\
+         & 20{,}000 & 61.49 & 61.01 & 52.21 & \textbf{62.10} & 60.42 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\begin{figure}[htbp]
+    \centering
+    \begin{tikzpicture}
+        \begin{axis}[resultaxis, xlabel={Cache capacity (entries)}, ylabel={Human hit rate (\%)}, xtick={1000,5000,10000,20000}, xticklabels={1k,5k,10k,20k}, ymin=20, ymax=66]
+            \addplot[algdtac] coordinates {(1000,39.38) (5000,51.85) (10000,58.22) (20000,61.49)};
+            \addplot[algnoscore] coordinates {(1000,37.62) (5000,48.43) (10000,53.89) (20000,61.01)};
+            \addplot[alglru] coordinates {(1000,22.07) (5000,33.26) (10000,41.12) (20000,52.21)};
+            \addplot[algsieve] coordinates {(1000,37.71) (5000,48.36) (10000,54.32) (20000,62.10)};
+            \addplot[algsfifo] coordinates {(1000,37.75) (5000,47.61) (10000,53.09) (20000,60.42)};
+            \legend{DTAC, DTAC (no score), LRU, SIEVE, S3-FIFO}
+        \end{axis}
+    \end{tikzpicture}
+    \caption{Human hit rate against cache capacity, naive workload, 75\% bot traffic}
+    \label{fig:capacity}
+\end{figure}
+
+\begin{table}[htbp]
+    \centering
+    \caption{Paired difference in human hit rate, DTAC $-$ X (percentage points), against cache capacity, naive workload. Every 95\% CI excludes zero (half-widths 0.05--0.36)}
+    \label{tab:paired-capacity}
+    \small
+    \begin{tabular}{llcccc}
+        \toprule
+        Bot ratio & Capacity & vs DTAC (no score) & vs LRU & vs SIEVE & vs S3-FIFO \\
+        \midrule
+        30\% & 1{,}000 & +0.24 & +11.80 & +1.14 & $-$0.07 \\
+         & 5{,}000 & +1.04 & +11.03 & +2.06 & +1.21 \\
+         & 10{,}000 & +1.15 & +8.90 & +1.97 & +1.74 \\
+         & 20{,}000 & $-$1.07 & +1.00 & $-$2.99 & $-$2.24 \\
+        \midrule
+        75\% & 1{,}000 & +1.76 & +17.32 & +1.67 & +1.64 \\
+         & 5{,}000 & +3.42 & +18.59 & +3.49 & +4.24 \\
+         & 10{,}000 & +4.33 & +17.10 & +3.90 & +5.13 \\
+         & 20{,}000 & +0.49 & +9.28 & $-$0.61 & +1.08 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+From 1{,}000 to 10{,}000 entries, DTAC outperformed every baseline on the naive workload, with the single exception of S3-FIFO at 1{,}000 entries and 30\% bots, where S3-FIFO was ahead by a statistically significant but practically negligible 0.07 points. At 75\% bots its advantage over SIEVE and S3-FIFO was largest at 5{,}000 and 10{,}000 entries (3.5--5.1 points).
+
+At 20{,}000 entries (20\% of the catalog) the picture changed. DTAC still beat LRU (by 1.00 and 9.28 points), but it lost to SIEVE at both bot ratios ($-2.99$ points at 30\% and $-0.61$ at 75\%) and, at 30\% bots, to S3-FIFO ($-2.24$) and even to its own ablation ($-1.07$). Its human hit rate also grew less with capacity than the baselines' did: from 10{,}000 to 20{,}000 entries DTAC gained about 3.3 points, against about 8 points for SIEVE at both ratios. Its overall hit rate at 20{,}000 entries was lower than that of every other algorithm, including LRU (by 1.55 points at 30\% bots and 3.22 points at 75\%). The calibration check reported in Section 3.4.3 had already shown that, at this capacity, a lower promotion threshold would have improved DTAC's human hit rate by about 2.3 points. No algorithm showed a sudden drop at the smallest capacity, indicating that the small shards used there (8 shards of 125 entries) did not distort the results.
+
+\section{Cache Pollution}
+Table~\ref{tab:cpi} and Figure~\ref{fig:cpi} report the Cache Pollution Index, the share of resident main-cache entries that no human had requested since their admission.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Cache Pollution Index (\%), capacity 10{,}000}
+    \label{tab:cpi}
+    \small
+    \begin{tabular}{llccccc}
+        \toprule
+        Workload & Bot ratio & DTAC & DTAC (no score) & LRU & SIEVE & S3-FIFO \\
+        \midrule
+        Naive & 10\% & 0.0 & 6.0 & 14.0 & 7.0 & 8.6 \\
+         & 30\% & 0.0 & 17.9 & 37.4 & 18.3 & 23.0 \\
+         & 50\% & 0.0 & 30.5 & 57.2 & 27.7 & 36.2 \\
+         & 75\% & 0.0 & 47.6 & 78.9 & 37.4 & 55.3 \\
+        \midrule
+        Stealthy & 10\% & 4.9 & 4.9 & 11.4 & 5.7 & 7.0 \\
+         & 30\% & 15.1 & 15.2 & 32.2 & 15.8 & 20.0 \\
+         & 50\% & 26.6 & 26.6 & 51.6 & 25.1 & 32.3 \\
+         & 75\% & 43.9 & 44.1 & 74.9 & 35.7 & 50.9 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\begin{figure}[htbp]
+    \centering
+    \begin{minipage}{0.49\textwidth}
+        \centering
+        \begin{tikzpicture}
+            \begin{axis}[resultaxis, height=6cm, title={(a) Naive}, xlabel={Bot traffic (\%)}, ylabel={CPI (\%)}, ymin=0, ymax=80, legend to name=cpilegend]
+                \addplot[algdtac] coordinates {(10,0.0) (30,0.0) (50,0.0) (75,0.0)};
+                \addplot[algnoscore] coordinates {(10,6.0) (30,17.9) (50,30.5) (75,47.6)};
+                \addplot[alglru] coordinates {(10,14.0) (30,37.4) (50,57.2) (75,78.9)};
+                \addplot[algsieve] coordinates {(10,7.0) (30,18.3) (50,27.7) (75,37.4)};
+                \addplot[algsfifo] coordinates {(10,8.6) (30,23.0) (50,36.2) (75,55.3)};
+                \legend{DTAC, DTAC (no score), LRU, SIEVE, S3-FIFO}
+            \end{axis}
+        \end{tikzpicture}
+    \end{minipage}\hfill
+    \begin{minipage}{0.49\textwidth}
+        \centering
+        \begin{tikzpicture}
+            \begin{axis}[resultaxis, height=6cm, title={(b) Stealthy}, xlabel={Bot traffic (\%)}, ymin=0, ymax=80]
+                \addplot[algdtac] coordinates {(10,4.9) (30,15.1) (50,26.6) (75,43.9)};
+                \addplot[algnoscore] coordinates {(10,4.9) (30,15.2) (50,26.6) (75,44.1)};
+                \addplot[alglru] coordinates {(10,11.4) (30,32.2) (50,51.6) (75,74.9)};
+                \addplot[algsieve] coordinates {(10,5.7) (30,15.8) (50,25.1) (75,35.7)};
+                \addplot[algsfifo] coordinates {(10,7.0) (30,20.0) (50,32.3) (75,50.9)};
+            \end{axis}
+        \end{tikzpicture}
+    \end{minipage}
+    \ref{cpilegend}
+    \caption{Cache Pollution Index against bot traffic share, capacity 10{,}000}
+    \label{fig:cpi}
+\end{figure}
+
+On the naive workload DTAC's CPI was exactly zero at every bot ratio and in every seed: no item requested only by bots was ever admitted to the main cache, because detected bot requests contribute almost nothing to a resource's score and so cannot promote it. The share of resident entries whose admission had been triggered by a bot request was likewise zero. For every other algorithm the CPI grew roughly in proportion to the bot share. At 75\% bots, 78.9\% of LRU's capacity held content that no human had requested since admission, against 55.3\% for S3-FIFO, 47.6\% for the ablation and 37.4\% for SIEVE.
+
+On the stealthy workload DTAC's CPI matched its ablation's at every ratio (4.9--44.1\%), was well below LRU's and S3-FIFO's, and was close to SIEVE's at 10--50\% bots. At 75\% bots SIEVE retained noticeably less bot-only content (35.7\%) than DTAC (43.9\%).
+
+\section{Latency and Memory Overhead}
+Table~\ref{tab:overhead} summarizes the computational and memory overhead at a capacity of 10{,}000 entries. $T_{proxy}$ is the router's scoring time per request and applies only to DTAC. The total access time includes the router (for DTAC), the cache engine and the replayer's own metric recording; for DTAC it also includes the system's built-in telemetry, which runs after both phase timers stop. The memory figure is the growth of the process's resident set size over the replay, which reflects cache metadata (and the replayer's own bookkeeping, identical for every algorithm) but not payload bytes.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Latency (99th percentile, $\mu$s) and memory overhead (RSS growth over the replay), capacity 10{,}000}
+    \label{tab:overhead}
+    \small
+    \setlength{\tabcolsep}{4pt}
+    \begin{tabular}{llccccc}
+        \toprule
+        Metric & Workload, ratio & DTAC & DTAC (no score) & LRU & SIEVE & S3-FIFO \\
+        \midrule
+        $T_{proxy}$ p99 & Naive, 10--75\% & 22.8--35.0 & -- & -- & -- & -- \\
+         & Stealthy, 10--75\% & 35.3--39.2 & -- & -- & -- & -- \\
+        \midrule
+        Total p99 & Naive, 30\% & 160 & 112 & 87 & 82 & 124 \\
+         & Naive, 75\% & 92 & 93 & 79 & 80 & 88 \\
+         & Stealthy, 30\% & 141 & 105 & 100 & 85 & 89 \\
+         & Stealthy, 75\% & 148 & 93 & 120 & 107 & 92 \\
+        \midrule
+        RSS (MiB) & Naive, 10\% & 17.1 & 12.9 & 4.8 & 4.9 & 8.6 \\
+         & Naive, 75\% & 32.5 & 20.4 & 4.8 & 4.9 & 9.1 \\
+         & Stealthy, 75\% & 28.9 & 19.7 & 4.6 & 5.0 & 9.1 \\
+        \midrule
+        Ghost entries & Naive, 10\% & 35{,}340 & 32{,}634 & -- & -- & 8{,}916 \\
+         & Naive, 75\% & 79{,}530 & 44{,}883 & -- & -- & 8{,}928 \\
+         & Stealthy, 75\% & 44{,}926 & 44{,}861 & -- & -- & 8{,}932 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+The router's 99th-percentile scoring time was between 22.8 and 39.2 microseconds across all cells, roughly fifty times below the 2-millisecond budget set in Section 3.7.4. The 99th-percentile total access time was below 0.2 milliseconds for every algorithm. These tail latencies were noisy across seeds: the 95\% confidence half-widths ranged from about 13 to 87 microseconds, so most differences between algorithms in Table~\ref{tab:overhead} are not statistically meaningful. DTAC's total tail latency was nonetheless typically higher than the baselines', by up to about 100 microseconds in the noisiest cells, consistent with the additional router work and telemetry on its path.
+
+DTAC used more memory than the baselines. Its RSS growth was 17.1 MiB at 10\% naive bots and 32.5 MiB at 75\%, against about 5 MiB for LRU and SIEVE and about 9 MiB for S3-FIFO. The difference is almost entirely the ghost cache and the router's per-IP state. DTAC's ghost cache grew with the naive bot share, from 35{,}340 entries at 10\% to 79{,}530 at 75\%, close to its bound of eight times the main-cache capacity (79{,}872 entries), because every detected bot miss leaves a near-zero-score ghost entry; the ablation's ghost held about 45{,}000 entries. All algorithms held the same 9{,}984 main-cache entries and about 256 MiB of logical payload, so the comparison is at equal main-cache capacity.
+
+\section{Networked Validation}
+To confirm that the in-process replay reflects the behavior of the deployed system, seed 1's naive log at 30\% bots was also replayed over HTTP on \texttt{localhost}, through the standalone DTAC reverse proxy to the stub origin server, at a capacity of 10{,}000 entries. The networked run gave a human hit rate of 58.29\% against 58.32\% in-process for the same seed, both within the five-seed interval of $58.27 \pm 0.12\%$. The overall hit rate was 43.44\% against 43.46\%, and the router's class-mean gap was 0.975 in both cases. Over HTTP the whole round trip took 2.8 milliseconds at the median and 9.7 milliseconds at the 99th percentile, at about 33{,}000 requests per second, against a 99th percentile of about 0.2 milliseconds in-process. This additional time is the cost of the HTTP stack and the network loopback, not of the cache or the router.
+
+\section{Summary of Results}
+The main findings of the experiments are as follows:
+\begin{enumerate}
+    \item Against naive scrapers, the router separated bots from humans perfectly (ROC-AUC 1.000, class-mean gap 0.976) with no false positives at a threshold of 0.5, although returning visitors were penalized slightly.
+    \item With this separation, DTAC's human hit rate stayed at 58.2--58.3\% at a capacity of 10{,}000 entries regardless of the bot share, while every alternative degraded. At 75\% bots DTAC outperformed LRU by 17.10 points, SIEVE by 3.90, S3-FIFO by 5.13 and its own no-score ablation by 4.33, with every difference statistically significant.
+    \item The ablation showed that the AI-score is responsible for most of DTAC's advantage over the scan-resistant baselines, and that this contribution grows with the bot share.
+    \item DTAC admitted no bot-only content on the naive workload (CPI 0.0\%), against 37--79\% for the baselines at 75\% bots.
+    \item Against stealthy scrapers the router was no better than chance (ROC-AUC 0.485), DTAC tied its ablation, and its human hit rate declined like SIEVE's. It still outperformed LRU and S3-FIFO and tied SIEVE at 75\% bots.
+    \item DTAC's advantage depended on cache capacity: it led at 1--10\% of the catalog but lost to SIEVE (and, at 30\% bots, to S3-FIFO and its ablation) at 20\%, where its constants were known to be suboptimal.
+    \item The overhead was modest: router scoring took 23--39 $\mu$s at the 99th percentile, total tail latency stayed below 0.2 ms, and DTAC's metadata used up to about 28 MiB more memory than LRU, mainly for its ghost cache.
+    \item A networked replay through the real proxy reproduced the in-process hit rates to within 0.03 points.
+\end{enumerate}
