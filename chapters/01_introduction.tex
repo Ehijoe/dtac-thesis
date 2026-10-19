@@ -26,10 +26,10 @@ The primary aim of this research is to design and implement a dynamic, heuristic
 \subsection{Specific Objectives}
 To achieve this aim, the specific objectives of the study are to:
 \begin{itemize}
-    \item Build a lightweight heuristic detector utilizing passive network analysis, specifically evaluating HTTP header anomalies and structural requests \cite{van_boxem_shy_2026}.
-    \item Assign a real-time, continuous "AI-score" ranging from 0.0 to 1.0 to incoming HTTP requests, at a bounded per-request cost that does not grow with traffic volume, to probabilistically quantify automated bot origins \cite{chandra_composite_2026, van_boxem_shy_2026}.
-    \item Develop a Dynamic Traffic-Aware Cache (DTAC) architecture whose admission and eviction decisions are weighted by the assigned real-time AI-scores, in place of the score-blind recency ordering of the standard Least Recently Used (LRU) algorithm \cite{zhang_rethinking_2026}.
-    \item Evaluate the DTAC prototype by benchmarking its cache hit rates against standard LRU and the scan-resistant SIEVE and S3-FIFO algorithms under controlled, simulated workloads of mixed human and AI traffic \cite{breslau_web_1999, zhang_rethinking_2026}.
+    \item Build a lightweight heuristic detector utilizing passive network analysis, specifically evaluating HTTP header anomalies and structural requests.
+    \item Develop a module to assign a real-time, continuous "AI-score" ranging from 0.0 to 1.0 to incoming HTTP requests, at a bounded per-request cost that does not grow with traffic volume, to probabilistically quantify automated bot origins.
+    \item Develop a Dynamic Traffic-Aware Cache (DTAC) architecture whose admission and eviction decisions are weighted by the assigned real-time AI-scores, in place of the score-blind recency ordering of the standard Least Recently Used (LRU) algorithm.
+    \item Evaluate the DTAC prototype by benchmarking its cache hit rates against standard LRU and the scan-resistant SIEVE and S3-FIFO algorithms under controlled, simulated workloads of mixed human and AI traffic.
 \end{itemize}
 
 \section{Scope of the Research}

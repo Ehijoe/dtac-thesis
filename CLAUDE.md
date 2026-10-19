@@ -36,7 +36,7 @@ The thesis text must agree with these copies from the implementation repo. They 
 
 ## Conventions
 
-- **Formatting follows the university's thesis style spec.** The `% --- 1.x ...` comments in `main.tex` refer to sections of that spec: 12pt Times (`newtxtext`/`newtxmath`), A4 with a 3.7cm left margin, double spacing, uppercase centered 14pt chapter headings formatted as "CHAPTER X: TITLE", and front matter in roman page numbers. Hyperlinks are deliberately black for print. Hyphenation is globally disabled (`hyphenat[none]`). Don't change these without being asked.
+- **Formatting follows the university's thesis style spec.** The `% --- 1.x ...` comments in `main.tex` refer to sections of that spec: 12pt Times (`newtxtext`/`newtxmath`), A4 with a 3.7cm left margin, double spacing, uppercase centered 14pt chapter headings formatted as "CHAPTER ONE" with the title on the next line, and front matter in roman page numbers. Hyperlinks are deliberately black for print. Hyphenation is globally disabled (`hyphenat[none]`). Don't change these without being asked.
 - **Citations use `apacite` (APA).** Use `\cite{}` for parenthetical citations and `\citeA{}` for narrative ones ("\citeA{kim_scrapers_2025} define...").
 - Front-matter chapters use `\chapter*` plus a manual `\addcontentsline{toc}{chapter}{...}`.
 - Label prefixes: `chap:`, `fig:`, `tab:`, `eq:`.
