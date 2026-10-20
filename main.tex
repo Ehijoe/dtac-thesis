@@ -32,6 +32,7 @@
 \usepackage{hyperref}
 \usepackage{parskip}
 \usepackage[none]{hyphenat}
+\setlength{\emergencystretch}{3em} % with hyphenation off, let TeX loosen a line rather than overrun the margin
 \hypersetup{
     colorlinks=true,
     linkcolor=black, % Keeping links black for print quality
@@ -101,49 +102,37 @@
 
 % --- Title Page Variables ---
 \title{\MakeUppercase{Dynamic Traffic-Aware Web Caching: Implementing Heuristic Routing to Mitigate AI Scraper Interference}}
-\author{\MakeUppercase{Joseph Alikah}}
+\author{\MakeUppercase{Joseph Ehiagwina Elango Alikah}}
 % Add custom commands for specific title page requirements
 \newcommand{\matriculation}{231414}
 \newcommand{\degree}{Bachelor of Science}
-\newcommand{\submissionmonth}{September 2026}
+\newcommand{\submissionmonth}{October 2026}
 
 \begin{document}
 
 % --- 1.2 Title Page ---
 \begin{titlepage}
     \begin{center}
-        \vspace*{1.5cm}
+        \vspace*{3cm}
 
-        \includegraphics[width=2cm]{figures/UI_logo.png}
-        
-        \vspace{1.5cm} % Space between logo and title
-        
         \textbf{\Large \MakeUppercase{Dynamic Traffic-Aware Web Caching: Implementing Heuristic Routing to Mitigate AI Scraper Interference}}\\
         \vspace{1.5cm}
-        
-        \textbf{\MakeUppercase{Joseph Alikah}}
-        
+
+        BY\\
+        \vspace{0.5cm}
+        \textbf{\MakeUppercase{Joseph Ehiagwina Elango Alikah}}
+
         \vspace{0.5cm}
         Matriculation Number: 231414
-        
-        \vspace{1.5cm}
-        
-        Supervised by\\
-        \vspace{0.5cm}
-        \textbf{Dr. Nancy Woods}
-        
-        \vspace{1.5cm}
-        
-        In Partial Fulfilment to Requirements for the Award of the Degree of\\
+
+        \vspace{2cm}
+
+        A project submitted to the Department of Computer Science,\\
+        Faculty of Science, University of Ibadan,\\
+        in Partial Fulfilment to Requirements for the Award of the Degree of\\
         \vspace{0.5cm}
         \textbf{Bachelor of Science (B.Sc.) in Computer Science}
-        
-        \vspace{1.5cm}
-        
-        Department of Computer Science\\
-        Faculty of Science\\
-        University of Ibadan, Ibadan, Nigeria
-        
+
         \vfill
         
         \textbf{November 2026}
@@ -159,7 +148,7 @@
 % --- 1.6 Certification ---
 \chapter*{Certification}
 \addcontentsline{toc}{chapter}{Certification}
-This is to certify that this research work was carried out by \textbf{ALIKAH, Joseph Ehiagwina}
+This is to certify that this research work was carried out by \textbf{ALIKAH, Joseph Ehiagwina Elango}
 with matriculation number \textbf{231414} in the Department of Computer Science, University of Ibadan.
 This research work is considered adequate in partial fulfilment of the requirements for the award
 of a Bachelor of Science in Computer Science.
@@ -189,7 +178,7 @@ Department of Computer Science & \\
 \addcontentsline{toc}{chapter}{Dedication}
 \noindent
 
-This report is dedicated to God, whose guidance and blessings have enabled me to navigate
+This thesis is dedicated to God, whose guidance and blessings have enabled me to navigate
 through the challenges and achieve my goals.
 
 I also dedicate this work to my parents, Dr. Sylvester Alikah and Dr. Anita Alikah, whose
@@ -238,27 +227,32 @@ ARC & Adaptive Replacement Cache \\
 ASN & Autonomous System Number \\
 AUC & Area Under the Curve \\
 BHR & Byte Hit Rate \\
-CDF & Cumulative Distribution Function \\
 CDN & Content Delivery Network \\
-CHR & Cache Hit Ratio \\
+CHR & Cache Hit Rate \\
 CI & Confidence Interval \\
+CNN & Convolutional Neural Network \\
 CPI & Cache Pollution Index \\
 CPU & Central Processing Unit \\
 DDoS & Distributed Denial of Service \\
 DNN & Deep Neural Network \\
+DRAM & Dynamic Random-Access Memory \\
 DTAC & Dynamic Traffic-Aware Cache \\
 EWMA & Exponentially Weighted Moving Average \\
 FIFO & First-In, First-Out \\
 FPR & False-Positive Rate \\
+GAN & Generative Adversarial Network \\
 GMM & Gaussian Mixture Model \\
 HTTP & Hypertext Transfer Protocol \\
 IP & Internet Protocol \\
+IRM & Independent Reference Model \\
 JSON & JavaScript Object Notation \\
 LFU & Least Frequently Used \\
 LLM & Large Language Model \\
 LLR & Log-Likelihood Ratio \\
 LRU & Least Recently Used \\
+ML & Machine Learning \\
 NAT & Network Address Translation \\
+NVMe & Non-Volatile Memory Express \\
 OSI & Open Systems Interconnection \\
 RAG & Retrieval-Augmented Generation \\
 ROC & Receiver Operating Characteristic \\
